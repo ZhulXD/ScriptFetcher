@@ -1,0 +1,39 @@
+if not isfolder("fetched") then makefolder("fetched") end
+game:GetService("StarterGui"):SetCore("SendNotification", {Title = "script fetcher", Text = "yo we starting this thing", Duration = 10})
+print("[FETCHER] lets get these scripts fr")
+
+task.spawn(function()
+    for i = 1, 3 do
+        for _, script in pairs(game:GetDescendants()) do
+            if not script.Parent then continue end
+            if not (script.ClassName == "ModuleScript" or script.ClassName == "LocalScript" or (script.ClassName == "Script" and script.RunContext == Enum.RunContext.Client)) then continue end
+            if script:IsDescendantOf(game:GetService("CoreGui")) or script:IsDescendantOf(game:GetService("CorePackages")) or script:IsDescendantOf(game:GetService("StarterPlayer")) or script:IsDescendantOf(game:GetService("Chat")) then continue end
+            if script:GetFullName():match("PlayerModule") or script:GetFullName():match("RbxCharacterSounds") or script:GetFullName():match("ChatScript") or script:GetFullName():match("BubbleChat") or script:GetFullName():match("Satchel") or script:GetFullName():match("TopbarPlus") or script:GetFullName():match("PlayerScriptsLoader") or script:GetFullName():match("Icon") or script.Name == "Animate" then continue end
+            if script:IsDescendantOf(game:GetService("Players")) and not script:IsDescendantOf(game:GetService("Players").LocalPlayer) then continue end
+            if script.Parent and script.Parent.ClassName == "Model" and script.Parent:FindFirstChildOfClass("Humanoid") and script.Parent ~= game:GetService("Players").LocalPlayer.Character then continue end
+            if script:IsDescendantOf(game.Workspace) and not script:GetFullName():match(game:GetService("Players").LocalPlayer.Name) then continue end
+            if isfile(`fetched/{script.ClassName == "ModuleScript" and "Module" or script.ClassName == "LocalScript" and "Local" or "Base"}_{script:GetFullName():gsub(game:GetService("Players").LocalPlayer.Name, "LocalPlayer"):gsub("%.", "_")}.luau`) then continue end
+            task.wait(0.05)
+            pcall(function()
+                writefile(`fetched/{script.ClassName == "ModuleScript" and "Module" or script.ClassName == "LocalScript" and "Local" or "Base"}_{script:GetFullName():gsub(game:GetService("Players").LocalPlayer.Name, "LocalPlayer"):gsub("%.", "_")}.luau`, `--[[\nScript Type: {script.ClassName}\nFull Path: {script:GetFullName():gsub(game:GetService("Players").LocalPlayer.Name, "LocalPlayer")}\nParent: {script.Parent and script.Parent:GetFullName():gsub(game:GetService("Players").LocalPlayer.Name, "LocalPlayer") or "nil"}\n]]\n\n{decompile(script)}`)
+                print(`[FETCHER] gottem {script.ClassName == "ModuleScript" and "Module" or script.ClassName == "LocalScript" and "Local" or "Base"}: {script:GetFullName():gsub(game:GetService("Players").LocalPlayer.Name, "LocalPlayer")}`)
+            end)
+        end
+        for _, script in pairs(getloadedmodules()) do
+            if not script.Parent then continue end
+            if script:IsDescendantOf(game:GetService("CoreGui")) or script:IsDescendantOf(game:GetService("CorePackages")) or script:IsDescendantOf(game:GetService("StarterPlayer")) or script:IsDescendantOf(game:GetService("Chat")) then continue end
+            if script:GetFullName():match("PlayerModule") or script:GetFullName():match("RbxCharacterSounds") or script:GetFullName():match("ChatScript") or script:GetFullName():match("BubbleChat") or script:GetFullName():match("Satchel") or script:GetFullName():match("TopbarPlus") or script:GetFullName():match("PlayerScriptsLoader") or script:GetFullName():match("Icon") or script.Name == "Animate" then continue end
+            if script:IsDescendantOf(game:GetService("Players")) and not script:IsDescendantOf(game:GetService("Players").LocalPlayer) then continue end
+            if script:IsDescendantOf(game.Workspace) and not script:GetFullName():match(game:GetService("Players").LocalPlayer.Name) then continue end
+            if isfile(`fetched/Module_{script:GetFullName():gsub(game:GetService("Players").LocalPlayer.Name, "LocalPlayer"):gsub("%.", "_")}.luau`) then continue end
+            task.wait(0.05)
+            pcall(function()
+                writefile(`fetched/Module_{script:GetFullName():gsub(game:GetService("Players").LocalPlayer.Name, "LocalPlayer"):gsub("%.", "_")}.luau`, `--[[\nScript Type: {script.ClassName}\nFull Path: {script:GetFullName():gsub(game:GetService("Players").LocalPlayer.Name, "LocalPlayer")}\nParent: {script.Parent and script.Parent:GetFullName():gsub(game:GetService("Players").LocalPlayer.Name, "LocalPlayer") or "nil"}\n]]\n\n{decompile(script)}`)
+                print(`[FETCHER] gottem Module: {script:GetFullName():gsub(game:GetService("Players").LocalPlayer.Name, "LocalPlayer")}`)
+            end)
+        end
+        if i < 3 then task.wait(0.05) end
+    end
+    print("[FETCHER] we done here")
+    game:GetService("StarterGui"):SetCore("SendNotification", {Title = "script fetcher", Text = "all done bro", Duration = 10})
+end)
