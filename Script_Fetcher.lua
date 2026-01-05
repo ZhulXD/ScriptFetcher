@@ -99,10 +99,14 @@ local function attempt_save(script)
     local attempts = 0
 
     -- Retry logic
-    while attempts < 3 and not success do
+    while attempts < 5 and not success do
         attempts += 1
         local ok, result = pcall(decompile, script)
-        if ok and result and result ~= "" then
+
+        if ok and result and string.find(result, "failed to decompile bytecode: Too Many Requests") then
+            warn("[FETCHER] Rate limit hit on " .. script.Name .. " - Waiting 1.5s...")
+            task.wait(1.5)
+        elseif ok and result and result ~= "" then
             source = result
             success = true
         else
