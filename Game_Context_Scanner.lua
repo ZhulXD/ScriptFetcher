@@ -98,15 +98,57 @@ local function get_script_source(scriptObj)
     return source
 end
 
--- 5. MODULE INSPECTOR
-local function inspect_module(moduleObj)
-    local info = {}
-    local success, result = pcall(require, moduleObj)
-    if success and typeof(result) == "table" then
-        for k, v in pairs(result) do
-            table.insert(info, tostring(k) .. " (" .. typeof(v) .. ")")
+-- 5. PROPERTY DUMPER
+local function get_properties_string(obj)
+    local props = {}
+
+    if obj:IsA("Tool") then
+        table.insert(props, "Enabled: " .. tostring(obj.Enabled))
+        table.insert(props, "Grip: " .. tostring(obj.Grip))
+        if obj.ToolTip ~= "" then table.insert(props, "ToolTip: " .. obj.ToolTip) end
+        if obj.TextureId ~= "" then table.insert(props, "TextureId: " .. obj.TextureId) end
+    elseif obj:IsA("ProximityPrompt") then
+        table.insert(props, "ActionText: " .. obj.ActionText)
+        table.insert(props, "ObjectText: " .. obj.ObjectText)
+        table.insert(props, "HoldDuration: " .. tostring(obj.HoldDuration))
+        table.insert(props, "KeyCode: " .. tostring(obj.KeyboardKeyCode))
+    elseif obj:IsA("Humanoid") then
+        table.insert(props, "Health: " .. tostring(obj.Health))
+        table.insert(props, "MaxHealth: " .. tostring(obj.MaxHealth))
+        table.insert(props, "WalkSpeed: " .. tostring(obj.WalkSpeed))
+        table.insert(props, "JumpPower: " .. tostring(obj.JumpPower))
+        table.insert(props, "RigType: " .. tostring(obj.RigType))
+    elseif obj:IsA("ClickDetector") then
+        table.insert(props, "MaxActivationDistance: " .. tostring(obj.MaxActivationDistance))
+    elseif obj:IsA("Seat") or obj:IsA("VehicleSeat") then
+        table.insert(props, "Occupant: " .. (obj.Occupant and obj.Occupant:GetFullName() or "nil"))
+        table.insert(props, "Disabled: " .. tostring(obj.Disabled))
+    elseif obj:IsA("StringValue") or obj:IsA("IntValue") or obj:IsA("BoolValue") or obj:IsA("NumberValue") then
+        table.insert(props, "Value: " .. tostring(obj.Value))
+    elseif obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
+        table.insert(props, 'Text: "' .. obj.Text .. '"')
+        table.insert(props, "Visible: " .. tostring(obj.Visible))
+        if obj:IsA("TextButton") or obj:IsA("TextBox") then
+            table.insert(props, "Active: " .. tostring(obj.Active))
         end
-        return table.concat(info, ", ")
+    elseif obj:IsA("ImageButton") or obj:IsA("ImageLabel") then
+        table.insert(props, "Image: " .. tostring(obj.Image))
+        table.insert(props, "Visible: " .. tostring(obj.Visible))
+        if obj:IsA("ImageButton") then
+            table.insert(props, "Active: " .. tostring(obj.Active))
+        end
+    elseif obj:IsA("BasePart") then
+         -- Only log interesting parts to reduce spam
+         if obj.Name == "Handle" or obj.Transparency > 0.9 or obj.Name:lower():find("hitbox") or obj.Name:lower():find("root") then
+             table.insert(props, "Size: " .. tostring(obj.Size))
+             table.insert(props, "Transparency: " .. tostring(obj.Transparency))
+             table.insert(props, "CanCollide: " .. tostring(obj.CanCollide))
+             table.insert(props, "Position: " .. tostring(obj.Position))
+         end
+    end
+
+    if #props > 0 then
+        return table.concat(props, ", ")
     end
     return nil
 end
@@ -179,6 +221,12 @@ task.spawn(function()
             for _, obj in pairs(service:GetDescendants()) do
                 if not should_ignore(obj) then
 
+                    -- Dump Properties
+                    local props = get_properties_string(obj)
+                    if props then
+                        append_log("[PROPERTIES] " .. obj:GetFullName() .. " | " .. props)
+                    end
+
                     -- Log Remote
                     if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
                         append_log("[REMOTE DETECTED] " .. obj:GetFullName())
@@ -187,14 +235,6 @@ task.spawn(function()
                     -- Dump Script
                     if obj:IsA("LocalScript") or obj:IsA("ModuleScript") then
                         append_log("\n>>> SOURCE: " .. obj:GetFullName())
-
-                        -- Module Exports
-                        if obj:IsA("ModuleScript") then
-                            local exports = inspect_module(obj)
-                            if exports then
-                                append_log("-- [MODULE EXPORTS]: " .. exports)
-                            end
-                        end
 
                         -- Decompile
                         local source = get_script_source(obj)
@@ -210,4 +250,10 @@ task.spawn(function()
 
     print("[SCANNER] Complete! File Saved: " .. FILENAME)
     append_log("\n=== END OF SCAN ===")
+
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "Scan Complete!",
+        Text = "Saved to " .. FILENAME,
+        Duration = 5
+    })
 end)
