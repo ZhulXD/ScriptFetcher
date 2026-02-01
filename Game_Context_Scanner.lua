@@ -11,52 +11,6 @@ local function append_log(text)
 end
 
 print("[SCANNER] Starting Context Scanner...")
-append_log("=== STARTING REMOTE SPY ===")
-
--- 1. ENHANCED SERIALIZER
-local function serialize_args(args)
-    local parts = {}
-    for i, v in ipairs(args) do
-        local typeStr = typeof(v)
-        local valStr = tostring(v)
-
-        if typeStr == "Instance" then
-            valStr = v:GetFullName()
-        elseif typeStr == "string" then
-            valStr = '"' .. v .. '"'
-        elseif typeStr == "table" then
-            pcall(function() valStr = HttpService:JSONEncode(v) end)
-        end
-
-        table.insert(parts, string.format("[%d] (%s) %s", i, typeStr, valStr))
-    end
-    return table.concat(parts, ", ")
-end
-
--- 2. REMOTE SPY (Updated)
-local mt = getrawmetatable(game)
-local old_namecall = mt.__namecall
-setreadonly(mt, false)
-
-mt.__namecall = newcclosure(function(self, ...)
-    local method = getnamecallmethod()
-    local args = {...}
-
-    if method == "FireServer" or method == "InvokeServer" then
-        if self.ClassName == "RemoteEvent" or self.ClassName == "RemoteFunction" then
-            task.spawn(function()
-                local argsStr = serialize_args(args)
-                local log = string.format("[REMOTE SPY] %s: %s | Args: %s", method, self:GetFullName(), argsStr)
-                append_log(log)
-            end)
-        end
-    end
-
-    return old_namecall(self, ...)
-end)
-
-setreadonly(mt, true)
-print("[SCANNER] Remote Spy Active. Play the game to capture remote calls.")
 
 -- 3. HELPER: IGNORE LIST
 local function should_ignore(obj)
