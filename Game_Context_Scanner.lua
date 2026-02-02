@@ -109,30 +109,34 @@ end
 
 -- 6. TREE MAP GENERATOR
 local function generate_tree_map(root, indent)
-    indent = indent or ""
-    local tree = ""
-    local children = root:GetChildren()
+    local buffer = {}
 
-    for i, child in ipairs(children) do
-        if not should_ignore(child) then
-            local isLast = (i == #children)
-            local prefix = isLast and "└── " or "├── "
-            local subIndent = isLast and "    " or "│   "
+    local function recurse(node, current_indent)
+        local children = node:GetChildren()
 
-            -- Identify interesting objects
-            local tag = ""
-            if child:IsA("RemoteEvent") or child:IsA("RemoteFunction") then tag = " [REMOTE]"
-            elseif child:IsA("LocalScript") or child:IsA("ModuleScript") then tag = " [SCRIPT]"
-            elseif child:IsA("ScreenGui") then tag = " [GUI]"
-            end
+        for i, child in ipairs(children) do
+            if not should_ignore(child) then
+                local isLast = (i == #children)
+                local prefix = isLast and "└── " or "├── "
+                local subIndent = isLast and "    " or "│   "
 
-            if tag ~= "" or #child:GetChildren() > 0 then
-                tree = tree .. indent .. prefix .. child.Name .. tag .. "\n"
-                tree = tree .. generate_tree_map(child, indent .. subIndent)
+                -- Identify interesting objects
+                local tag = ""
+                if child:IsA("RemoteEvent") or child:IsA("RemoteFunction") then tag = " [REMOTE]"
+                elseif child:IsA("LocalScript") or child:IsA("ModuleScript") then tag = " [SCRIPT]"
+                elseif child:IsA("ScreenGui") then tag = " [GUI]"
+                end
+
+                if tag ~= "" or #child:GetChildren() > 0 then
+                    table.insert(buffer, current_indent .. prefix .. child.Name .. tag .. "\n")
+                    recurse(child, current_indent .. subIndent)
+                end
             end
         end
     end
-    return tree
+
+    recurse(root, indent or "")
+    return table.concat(buffer)
 end
 
 -- 7. MAIN SCAN
