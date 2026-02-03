@@ -6,8 +6,27 @@ local CorePackages = game:GetService("CorePackages")
 local FILENAME = "Game_Context_" .. game.PlaceId .. ".txt"
 writefile(FILENAME, "=== GAME CONTEXT SCAN ===\nTime: " .. tostring(os.date()) .. "\nPlace ID: " .. game.PlaceId .. "\n\n")
 
+-- OPTIMIZATION: Buffer logs to reduce I/O
+local LOG_BUFFER = {}
+local BUFFER_SIZE = 1000
+
+local function flush_log()
+    if #LOG_BUFFER > 0 then
+        -- appendfile is expensive, so we do it once per chunk
+        appendfile(FILENAME, table.concat(LOG_BUFFER, "\n") .. "\n")
+        if table.clear then
+            table.clear(LOG_BUFFER)
+        else
+            LOG_BUFFER = {}
+        end
+    end
+end
+
 local function append_log(text)
-    appendfile(FILENAME, text .. "\n")
+    table.insert(LOG_BUFFER, text)
+    if #LOG_BUFFER >= BUFFER_SIZE then
+        flush_log()
+    end
 end
 
 print("[SCANNER] Starting Context Scanner...")
@@ -114,10 +133,8 @@ local function get_properties_string(obj)
     return nil
 end
 
--- 6. TREE MAP GENERATOR
-local function generate_tree_map(root, indent)
-    indent = indent or ""
-    local tree = ""
+-- 6. TREE MAP GENERATOR (Optimized with table buffer)
+local function generate_tree_map_impl(root, indent, buffer)
     local children = root:GetChildren()
 
     for i, child in ipairs(children) do
@@ -134,12 +151,17 @@ local function generate_tree_map(root, indent)
             end
 
             if tag ~= "" or #child:GetChildren() > 0 then
-                tree = tree .. indent .. prefix .. child.Name .. tag .. "\n"
-                tree = tree .. generate_tree_map(child, indent .. subIndent)
+                table.insert(buffer, indent .. prefix .. child.Name .. tag)
+                generate_tree_map_impl(child, indent .. subIndent, buffer)
             end
         end
     end
-    return tree
+end
+
+local function generate_tree_map(root)
+    local buffer = {}
+    generate_tree_map_impl(root, "", buffer)
+    return table.concat(buffer, "\n")
 end
 
 -- 7. MAIN SCAN
@@ -211,6 +233,7 @@ task.spawn(function()
 
     print("[SCANNER] Complete! File Saved: " .. FILENAME)
     append_log("\n=== END OF SCAN ===")
+    flush_log() -- Final flush to ensure everything is written
 
     game:GetService("StarterGui"):SetCore("SendNotification", {
         Title = "Scan Complete!",
