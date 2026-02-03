@@ -13,16 +13,23 @@ end
 print("[SCANNER] Starting Context Scanner...")
 
 -- 3. HELPER: IGNORE LIST
+local IGNORE_NAMES = {
+    ["PlayerModule"] = true,
+    ["RbxCharacterSounds"] = true,
+    ["ChatScript"] = true,
+    ["BubbleChat"] = true,
+    ["CameraScript"] = true,
+    ["ControlScript"] = true,
+    ["Animate"] = true
+}
+
 local function should_ignore(obj)
     if not obj then return true end
     local name = obj.Name
 
     if obj:IsDescendantOf(CoreGui) or obj:IsDescendantOf(CorePackages) or obj:IsDescendantOf(game:GetService("Chat")) then return true end
 
-    local blacklist = {"PlayerModule", "RbxCharacterSounds", "ChatScript", "BubbleChat", "CameraScript", "ControlScript", "Animate"}
-    for _, blocked in ipairs(blacklist) do
-        if name == blocked then return true end
-    end
+    if IGNORE_NAMES[name] then return true end
 
     return false
 end
