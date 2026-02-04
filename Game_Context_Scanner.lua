@@ -44,11 +44,13 @@ local IGNORE_NAMES = {
 
 local function should_ignore(obj)
     if not obj then return true end
-    local name = obj.Name
 
     -- OPTIMIZATION: Skipped IsDescendantOf(CoreGui/etc) checks because we only scan disjoint services.
 
-    if IGNORE_NAMES[name] then return true end
+    -- NOTE: Removed redundant IsDescendantOf checks for CoreGui/Chat
+    -- as we strictly scan user services (Workspace, ReplicatedStorage, etc)
+    -- which are disjoint from internal services.
+    -- If 'game' or 'CoreGui' is added to scan list, restore checks here.
 
     return false
 end
