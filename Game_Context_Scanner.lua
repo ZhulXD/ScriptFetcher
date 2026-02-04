@@ -46,7 +46,7 @@ local function should_ignore(obj)
     if not obj then return true end
     local name = obj.Name
 
-    if obj:IsDescendantOf(CoreGui) or obj:IsDescendantOf(CorePackages) or obj:IsDescendantOf(game:GetService("Chat")) then return true end
+    -- OPTIMIZATION: Skipped IsDescendantOf(CoreGui/etc) checks because we only scan disjoint services.
 
     if IGNORE_NAMES[name] then return true end
 
