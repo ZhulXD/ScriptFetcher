@@ -45,8 +45,7 @@ local IGNORE_NAMES = {
 local function should_ignore(obj)
     if not obj then return true end
 
-    -- OPTIMIZATION: Check O(1) name lookup first
-    if IGNORE_NAMES[obj.Name] then return true end
+    -- OPTIMIZATION: Skipped IsDescendantOf(CoreGui/etc) checks because we only scan disjoint services.
 
     -- NOTE: Removed redundant IsDescendantOf checks for CoreGui/Chat
     -- as we strictly scan user services (Workspace, ReplicatedStorage, etc)
