@@ -45,6 +45,9 @@ local IGNORE_NAMES = {
 local function should_ignore(obj)
     if not obj then return true end
 
+    -- OPTIMIZATION: Check ignore list (O(1) lookup)
+    if IGNORE_NAMES[obj.Name] then return true end
+
     -- OPTIMIZATION: Skipped IsDescendantOf(CoreGui/etc) checks because we only scan disjoint services.
 
     -- NOTE: Removed redundant IsDescendantOf checks for CoreGui/Chat
@@ -135,6 +138,44 @@ local function get_properties_string(obj)
     return nil
 end
 
+-- OPTIMIZATION: Helper to process object in deep scan
+local function process_object(obj)
+    -- Dump Properties
+    local props = get_properties_string(obj)
+    if props then
+        append_log("[PROPERTIES] " .. obj:GetFullName() .. " | " .. props)
+    end
+
+    -- Log Remote
+    if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+        append_log("[REMOTE DETECTED] " .. obj:GetFullName())
+    end
+
+    -- Dump Script
+    if obj:IsA("LocalScript") or obj:IsA("ModuleScript") then
+        append_log("\n>>> SOURCE: " .. obj:GetFullName())
+
+        -- Decompile
+        local source = get_script_source(obj)
+        if source then
+            append_log(source)
+        end
+        append_log("<<< END SOURCE\n")
+    end
+end
+
+-- OPTIMIZATION: Recursive scan with pruning
+-- Replaces GetDescendants() to allow skipping entire ignored branches (O(N) -> O(N - Ignored))
+local function scan_service_recursively(obj)
+    if should_ignore(obj) then return end
+
+    process_object(obj)
+
+    for _, child in ipairs(obj:GetChildren()) do
+        scan_service_recursively(child)
+    end
+end
+
 -- 6. TREE MAP GENERATOR (Optimized with table buffer)
 local function generate_tree_map_impl(root, indent, buffer)
     local children = root:GetChildren()
@@ -203,32 +244,10 @@ task.spawn(function()
             print("[SCANNER] Deep Scanning " .. service.Name .. "...")
             append_log("\n--- Service: " .. service.Name .. " ---")
 
-            for _, obj in pairs(service:GetDescendants()) do
-                if not should_ignore(obj) then
-
-                    -- Dump Properties
-                    local props = get_properties_string(obj)
-                    if props then
-                        append_log("[PROPERTIES] " .. obj:GetFullName() .. " | " .. props)
-                    end
-
-                    -- Log Remote
-                    if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-                        append_log("[REMOTE DETECTED] " .. obj:GetFullName())
-                    end
-
-                    -- Dump Script
-                    if obj:IsA("LocalScript") or obj:IsA("ModuleScript") then
-                        append_log("\n>>> SOURCE: " .. obj:GetFullName())
-
-                        -- Decompile
-                        local source = get_script_source(obj)
-                        if source then
-                            append_log(source)
-                        end
-                        append_log("<<< END SOURCE\n")
-                    end
-                end
+            -- OPTIMIZATION: Use recursive traversal instead of GetDescendants()
+            -- This prevents allocating the entire tree in memory and allows pruning ignored branches.
+            for _, child in ipairs(service:GetChildren()) do
+                scan_service_recursively(child)
             end
         end
     end
