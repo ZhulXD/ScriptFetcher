@@ -44,6 +44,8 @@ local IGNORE_NAMES = {
 
 local function should_ignore(obj)
     if not obj then return true end
+    -- OPTIMIZATION: O(1) Lookup for ignored names
+    if IGNORE_NAMES[obj.Name] then return true end
 
     -- OPTIMIZATION: Skipped IsDescendantOf(CoreGui/etc) checks because we only scan disjoint services.
 
@@ -166,7 +168,42 @@ local function generate_tree_map(root)
     return table.concat(buffer, "\n")
 end
 
--- 7. MAIN SCAN
+-- 7. RECURSIVE DEEP SCAN (Optimized to skip ignored branches)
+local function scan_recursively(obj)
+    if should_ignore(obj) then return end
+
+    -- Process current object
+
+    -- Dump Properties
+    local props = get_properties_string(obj)
+    if props then
+        append_log("[PROPERTIES] " .. obj:GetFullName() .. " | " .. props)
+    end
+
+    -- Log Remote
+    if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+        append_log("[REMOTE DETECTED] " .. obj:GetFullName())
+    end
+
+    -- Dump Script
+    if obj:IsA("LocalScript") or obj:IsA("ModuleScript") then
+        append_log("\n>>> SOURCE: " .. obj:GetFullName())
+
+        -- Decompile
+        local source = get_script_source(obj)
+        if source then
+            append_log(source)
+        end
+        append_log("<<< END SOURCE\n")
+    end
+
+    -- Recurse into children
+    for _, child in ipairs(obj:GetChildren()) do
+        scan_recursively(child)
+    end
+end
+
+-- 8. MAIN SCAN
 task.spawn(function()
     task.wait(1)
 
@@ -203,32 +240,9 @@ task.spawn(function()
             print("[SCANNER] Deep Scanning " .. service.Name .. "...")
             append_log("\n--- Service: " .. service.Name .. " ---")
 
-            for _, obj in pairs(service:GetDescendants()) do
-                if not should_ignore(obj) then
-
-                    -- Dump Properties
-                    local props = get_properties_string(obj)
-                    if props then
-                        append_log("[PROPERTIES] " .. obj:GetFullName() .. " | " .. props)
-                    end
-
-                    -- Log Remote
-                    if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-                        append_log("[REMOTE DETECTED] " .. obj:GetFullName())
-                    end
-
-                    -- Dump Script
-                    if obj:IsA("LocalScript") or obj:IsA("ModuleScript") then
-                        append_log("\n>>> SOURCE: " .. obj:GetFullName())
-
-                        -- Decompile
-                        local source = get_script_source(obj)
-                        if source then
-                            append_log(source)
-                        end
-                        append_log("<<< END SOURCE\n")
-                    end
-                end
+            -- Use recursive scan instead of GetDescendants() for branch pruning
+            for _, child in ipairs(service:GetChildren()) do
+                scan_recursively(child)
             end
         end
     end
