@@ -85,7 +85,20 @@ end
 local function get_properties_string(obj)
     local props = {}
 
-    if obj:IsA("Tool") then
+    if obj:IsA("BasePart") then
+        if obj:IsA("Seat") or obj:IsA("VehicleSeat") then
+            table.insert(props, "Occupant: " .. (obj.Occupant and obj.Occupant:GetFullName() or "nil"))
+            table.insert(props, "Disabled: " .. tostring(obj.Disabled))
+        else
+            -- Only log interesting parts to reduce spam
+            if obj.Name == "Handle" or obj.Transparency > 0.9 or obj.Name:lower():find("hitbox") or obj.Name:lower():find("root") then
+                table.insert(props, "Size: " .. tostring(obj.Size))
+                table.insert(props, "Transparency: " .. tostring(obj.Transparency))
+                table.insert(props, "CanCollide: " .. tostring(obj.CanCollide))
+                table.insert(props, "Position: " .. tostring(obj.Position))
+            end
+        end
+    elseif obj:IsA("Tool") then
         table.insert(props, "Enabled: " .. tostring(obj.Enabled))
         table.insert(props, "Grip: " .. tostring(obj.Grip))
         if obj.ToolTip ~= "" then table.insert(props, "ToolTip: " .. obj.ToolTip) end
@@ -103,9 +116,6 @@ local function get_properties_string(obj)
         table.insert(props, "RigType: " .. tostring(obj.RigType))
     elseif obj:IsA("ClickDetector") then
         table.insert(props, "MaxActivationDistance: " .. tostring(obj.MaxActivationDistance))
-    elseif obj:IsA("Seat") or obj:IsA("VehicleSeat") then
-        table.insert(props, "Occupant: " .. (obj.Occupant and obj.Occupant:GetFullName() or "nil"))
-        table.insert(props, "Disabled: " .. tostring(obj.Disabled))
     elseif obj:IsA("StringValue") or obj:IsA("IntValue") or obj:IsA("BoolValue") or obj:IsA("NumberValue") then
         table.insert(props, "Value: " .. tostring(obj.Value))
     elseif obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
@@ -120,14 +130,6 @@ local function get_properties_string(obj)
         if obj:IsA("ImageButton") then
             table.insert(props, "Active: " .. tostring(obj.Active))
         end
-    elseif obj:IsA("BasePart") then
-         -- Only log interesting parts to reduce spam
-         if obj.Name == "Handle" or obj.Transparency > 0.9 or obj.Name:lower():find("hitbox") or obj.Name:lower():find("root") then
-             table.insert(props, "Size: " .. tostring(obj.Size))
-             table.insert(props, "Transparency: " .. tostring(obj.Transparency))
-             table.insert(props, "CanCollide: " .. tostring(obj.CanCollide))
-             table.insert(props, "Position: " .. tostring(obj.Position))
-         end
     end
 
     if #props > 0 then
