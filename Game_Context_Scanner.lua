@@ -63,7 +63,7 @@ local function get_script_source(scriptObj)
     local source = "-- [Failed to decompile]"
 
     while attempts < 5 and not success do
-        attempts += 1
+        attempts = attempts + 1
         local ok, result = pcall(decompile, scriptObj)
 
         if ok and result and string.find(result, "failed to decompile bytecode: Too Many Requests") then
@@ -282,6 +282,15 @@ if not _G.SCANNER_TEST_MODE then
     end)
 end
 
-return {
+local export = {
     execute_full_scan = execute_full_scan
 }
+
+if _G.SCANNER_TEST_MODE then
+    export.sanitize = sanitize
+    export.should_ignore = should_ignore
+    export.get_properties_string = get_properties_string
+    export.generate_tree_map = generate_tree_map
+end
+
+return export
