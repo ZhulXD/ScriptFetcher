@@ -92,10 +92,19 @@ local function get_properties_string(obj)
             table.insert(props, "Disabled: " .. tostring(obj.Disabled))
         else
             -- Only log interesting parts to reduce spam
-            if obj.Name == "Handle" or obj.Transparency > 0.9 or obj.Name:lower():find("hitbox") or obj.Name:lower():find("root") then
+            local name = obj.Name
+            local transparency = obj.Transparency
+            local shouldLog = name == "Handle" or transparency > 0.9
+
+            if not shouldLog then
+                local lowerName = name:lower()
+                shouldLog = lowerName:find("hitbox") or lowerName:find("root")
+            end
+
+            if shouldLog then
                 props = props or {}
                 table.insert(props, "Size: " .. tostring(obj.Size))
-                table.insert(props, "Transparency: " .. tostring(obj.Transparency))
+                table.insert(props, "Transparency: " .. tostring(transparency))
                 table.insert(props, "CanCollide: " .. tostring(obj.CanCollide))
                 table.insert(props, "Position: " .. tostring(obj.Position))
             end
