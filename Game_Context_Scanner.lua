@@ -226,9 +226,7 @@ local function deep_scan_recursive(root)
 end
 
 -- 7. MAIN SCAN
-task.spawn(function()
-    task.wait(1)
-
+local function execute_full_scan()
     -- A. TREE VIEW
     append_log("\n=== 1. HIERARCHY MAP (Tree View) ===")
     local map_services = {
@@ -275,4 +273,15 @@ task.spawn(function()
         Text = "Saved to " .. FILENAME,
         Duration = 5
     })
-end)
+end
+
+if not _G.SCANNER_TEST_MODE then
+    task.spawn(function()
+        task.wait(1)
+        execute_full_scan()
+    end)
+end
+
+return {
+    execute_full_scan = execute_full_scan
+}
