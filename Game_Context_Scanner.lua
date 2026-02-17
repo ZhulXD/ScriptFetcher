@@ -158,8 +158,8 @@ local function get_properties_string(obj)
 end
 
 -- 6. TREE MAP GENERATOR (Optimized with table buffer)
-local function generate_tree_map_impl(root, indent, buffer)
-    local children = root:GetChildren()
+local function generate_tree_map_impl(root, indent, buffer, cachedChildren)
+    local children = cachedChildren or root:GetChildren()
     local visibleChildren = {}
 
     for _, child in ipairs(children) do
@@ -180,9 +180,10 @@ local function generate_tree_map_impl(root, indent, buffer)
         elseif child:IsA("ScreenGui") then tag = " [GUI]"
         end
 
-        if tag ~= "" or #child:GetChildren() > 0 then
+        local grandChildren = child:GetChildren()
+        if tag ~= "" or #grandChildren > 0 then
             table.insert(buffer, indent .. prefix .. sanitize(child.Name) .. tag)
-            generate_tree_map_impl(child, indent .. subIndent, buffer)
+            generate_tree_map_impl(child, indent .. subIndent, buffer, grandChildren)
         end
     end
 end
