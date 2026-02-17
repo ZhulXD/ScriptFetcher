@@ -56,6 +56,12 @@ local function should_ignore(obj)
     return false
 end
 
+-- 5. HELPER: SANITIZE
+-- Defined earlier to ensure availability
+local function sanitize(val)
+    return (tostring(val):gsub("\r", "\\r"):gsub("\n", "\\n"))
+end
+
 -- 4. ROBUST DECOMPILER
 local function get_script_source(scriptObj)
     local attempts = 0
@@ -67,7 +73,7 @@ local function get_script_source(scriptObj)
         local ok, result = pcall(decompile, scriptObj)
 
         if ok and result and string.find(result, "failed to decompile bytecode: Too Many Requests") then
-            warn("[SCANNER] Rate limit on " .. scriptObj.Name .. " - Waiting 1.5s...")
+            warn("[SCANNER] Rate limit on " .. sanitize(scriptObj.Name) .. " - Waiting 1.5s...")
             task.wait(1.5)
         elseif ok and result and result ~= "" then
             source = result
@@ -77,11 +83,6 @@ local function get_script_source(scriptObj)
         end
     end
     return source
-end
-
--- 5. HELPER: SANITIZE
-local function sanitize(val)
-    return (tostring(val):gsub("\r", "\\r"):gsub("\n", "\\n"))
 end
 
 -- 6. PROPERTY DUMPER
@@ -238,7 +239,7 @@ local function execute_full_scan()
 
     for _, service in ipairs(map_services) do
         if service then
-            append_log(service.Name)
+            append_log(sanitize(service.Name))
             append_log(generate_tree_map(service))
         end
     end
@@ -257,8 +258,8 @@ local function execute_full_scan()
 
     for _, service in ipairs(deep_scan_services) do
         if service then
-            print("[SCANNER] Deep Scanning " .. service.Name .. "...")
-            append_log("\n--- Service: " .. service.Name .. " ---")
+            print("[SCANNER] Deep Scanning " .. sanitize(service.Name) .. "...")
+            append_log("\n--- Service: " .. sanitize(service.Name) .. " ---")
 
             deep_scan_recursive(service)
         end
