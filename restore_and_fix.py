@@ -1,4 +1,4 @@
-local HttpService = game:GetService("HttpService")
+content = r"""local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
 local CorePackages = game:GetService("CorePackages")
@@ -64,12 +64,6 @@ local function should_ignore(obj)
     return false
 end
 
--- 5. HELPER: SANITIZE
--- Defined earlier to ensure availability
-local function sanitize(val)
-    return (tostring(val):gsub("\r", "\\r"):gsub("\n", "\\n"))
-end
-
 -- 4. ROBUST DECOMPILER
 local function get_script_source(scriptObj)
     local attempts = 0
@@ -77,11 +71,11 @@ local function get_script_source(scriptObj)
     local source = "-- [Failed to decompile]"
 
     while attempts < 5 and not success do
-        attempts = attempts + 1
+        attempts += 1
         local ok, result = pcall(decompile, scriptObj)
 
         if ok and result and string.find(result, "failed to decompile bytecode: Too Many Requests") then
-            warn("[SCANNER] Rate limit on " .. sanitize(scriptObj.Name) .. " - Waiting 1.5s...")
+            warn("[SCANNER] Rate limit on " .. scriptObj.Name .. " - Waiting 1.5s...")
             task.wait(1.5)
         elseif ok and result and result ~= "" then
             source = result
@@ -91,6 +85,11 @@ local function get_script_source(scriptObj)
         end
     end
     return source
+end
+
+-- 5. HELPER: SANITIZE
+local function sanitize(val)
+    return (tostring(val):gsub("\r", "\r"):gsub("\n", "\n"))
 end
 
 -- 6. PROPERTY DUMPER
@@ -247,7 +246,7 @@ local function execute_full_scan()
 
     for _, service in ipairs(map_services) do
         if service then
-            append_log(sanitize(service.Name))
+            append_log(service.Name)
             append_log(generate_tree_map(service))
         end
     end
@@ -266,8 +265,8 @@ local function execute_full_scan()
 
     for _, service in ipairs(deep_scan_services) do
         if service then
-            print("[SCANNER] Deep Scanning " .. sanitize(service.Name) .. "...")
-            append_log("\n--- Service: " .. sanitize(service.Name) .. " ---")
+            print("[SCANNER] Deep Scanning " .. service.Name .. "...")
+            append_log("\n--- Service: " .. service.Name .. " ---")
 
             deep_scan_recursive(service)
         end
@@ -291,15 +290,10 @@ if not _G.SCANNER_TEST_MODE then
     end)
 end
 
-local export = {
+return {
     execute_full_scan = execute_full_scan
 }
+"""
 
-if _G.SCANNER_TEST_MODE then
-    export.sanitize = sanitize
-    export.should_ignore = should_ignore
-    export.get_properties_string = get_properties_string
-    export.generate_tree_map = generate_tree_map
-end
-
-return export
+with open("Game_Context_Scanner.lua", "w") as f:
+    f.write(content)
