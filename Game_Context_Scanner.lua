@@ -1,7 +1,4 @@
-local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
-local CoreGui = game:GetService("CoreGui")
-local CorePackages = game:GetService("CorePackages")
 
 local FILENAME = "Game_Context_" .. game.PlaceId .. ".txt"
 local success, err = pcall(function()
