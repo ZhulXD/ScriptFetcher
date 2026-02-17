@@ -69,6 +69,7 @@ end
 
 -- 4. ROBUST DECOMPILER
 local function get_script_source(scriptObj)
+    if not decompile then return "-- [Decompiler not available]" end
     local attempts = 0
     local success = false
     local source = "-- [Failed to decompile]"
