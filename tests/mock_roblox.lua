@@ -1,6 +1,29 @@
 -- Mock Roblox Environment
 _G = _G or {}
 
+local INHERITANCE = {
+    Part = {"BasePart"},
+    Seat = {"BasePart"},
+    VehicleSeat = {"Seat", "BasePart"},
+    Tool = {"BackpackItem"},
+    LocalScript = {"Script", "BaseScript", "LuaSourceContainer"},
+    ModuleScript = {"BaseScript", "LuaSourceContainer"},
+    RemoteEvent = {},
+    Folder = {},
+    ProximityPrompt = {},
+    Humanoid = {},
+    ClickDetector = {},
+    StringValue = {"ValueBase"},
+    IntValue = {"ValueBase"},
+    BoolValue = {"ValueBase"},
+    NumberValue = {"ValueBase"},
+    TextLabel = {"GuiObject", "GuiBase2d"},
+    TextButton = {"GuiButton", "GuiObject", "GuiBase2d"},
+    TextBox = {"GuiObject", "GuiBase2d"},
+    ImageButton = {"GuiButton", "GuiObject", "GuiBase2d"},
+    ImageLabel = {"GuiObject", "GuiBase2d"}
+}
+
 local function create_instance(className, name, parent)
     local obj = {
         ClassName = className,
@@ -9,8 +32,17 @@ local function create_instance(className, name, parent)
     }
     local children = {}
 
-    function obj:IsA(name)
-        return self.ClassName == name or (name == "Instance")
+    function obj:IsA(targetName)
+        if self.ClassName == targetName then return true end
+        if targetName == "Instance" then return true end
+
+        local parents = INHERITANCE[self.ClassName]
+        if parents then
+            for _, p in ipairs(parents) do
+                if p == targetName then return true end
+            end
+        end
+        return false
     end
 
     function obj:GetChildren()

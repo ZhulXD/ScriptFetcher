@@ -92,11 +92,10 @@ end
 
 -- 6. PROPERTY DUMPER
 local function get_properties_string(obj)
-    local props = nil
+    local props = {}
 
     if obj:IsA("BasePart") then
         if obj:IsA("Seat") or obj:IsA("VehicleSeat") then
-            props = props or {}
             table.insert(props, "Occupant: " .. (obj.Occupant and sanitize(obj.Occupant:GetFullName()) or "nil"))
             table.insert(props, "Disabled: " .. tostring(obj.Disabled))
         else
@@ -111,7 +110,6 @@ local function get_properties_string(obj)
             end
 
             if shouldLog then
-                props = props or {}
                 table.insert(props, "Size: " .. tostring(obj.Size))
                 table.insert(props, "Transparency: " .. tostring(transparency))
                 table.insert(props, "CanCollide: " .. tostring(obj.CanCollide))
@@ -119,39 +117,32 @@ local function get_properties_string(obj)
             end
         end
     elseif obj:IsA("Tool") then
-        props = props or {}
         table.insert(props, "Enabled: " .. tostring(obj.Enabled))
         table.insert(props, "Grip: " .. tostring(obj.Grip))
         if obj.ToolTip ~= "" then table.insert(props, "ToolTip: " .. sanitize(obj.ToolTip)) end
         if obj.TextureId ~= "" then table.insert(props, "TextureId: " .. sanitize(obj.TextureId)) end
     elseif obj:IsA("ProximityPrompt") then
-        props = props or {}
         table.insert(props, "ActionText: " .. sanitize(obj.ActionText))
         table.insert(props, "ObjectText: " .. sanitize(obj.ObjectText))
         table.insert(props, "HoldDuration: " .. tostring(obj.HoldDuration))
         table.insert(props, "KeyCode: " .. tostring(obj.KeyboardKeyCode))
     elseif obj:IsA("Humanoid") then
-        props = props or {}
         table.insert(props, "Health: " .. tostring(obj.Health))
         table.insert(props, "MaxHealth: " .. tostring(obj.MaxHealth))
         table.insert(props, "WalkSpeed: " .. tostring(obj.WalkSpeed))
         table.insert(props, "JumpPower: " .. tostring(obj.JumpPower))
         table.insert(props, "RigType: " .. tostring(obj.RigType))
     elseif obj:IsA("ClickDetector") then
-        props = props or {}
         table.insert(props, "MaxActivationDistance: " .. tostring(obj.MaxActivationDistance))
     elseif obj:IsA("StringValue") or obj:IsA("IntValue") or obj:IsA("BoolValue") or obj:IsA("NumberValue") then
-        props = props or {}
         table.insert(props, "Value: " .. sanitize(obj.Value))
     elseif obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
-        props = props or {}
         table.insert(props, 'Text: "' .. sanitize(obj.Text) .. '"')
         table.insert(props, "Visible: " .. tostring(obj.Visible))
         if obj:IsA("TextButton") or obj:IsA("TextBox") then
             table.insert(props, "Active: " .. tostring(obj.Active))
         end
     elseif obj:IsA("ImageButton") or obj:IsA("ImageLabel") then
-        props = props or {}
         table.insert(props, "Image: " .. sanitize(obj.Image))
         table.insert(props, "Visible: " .. tostring(obj.Visible))
         if obj:IsA("ImageButton") then
@@ -159,7 +150,7 @@ local function get_properties_string(obj)
         end
     end
 
-    if props and #props > 0 then
+    if #props > 0 then
         return table.concat(props, ", ")
     end
     return nil
