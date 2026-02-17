@@ -160,24 +160,29 @@ end
 -- 6. TREE MAP GENERATOR (Optimized with table buffer)
 local function generate_tree_map_impl(root, indent, buffer)
     local children = root:GetChildren()
+    local visibleChildren = {}
 
-    for i, child in ipairs(children) do
+    for _, child in ipairs(children) do
         if not should_ignore(child) then
-            local isLast = (i == #children)
-            local prefix = isLast and "└── " or "├── "
-            local subIndent = isLast and "    " or "│   "
+            table.insert(visibleChildren, child)
+        end
+    end
 
-            -- Identify interesting objects
-            local tag = ""
-            if child:IsA("RemoteEvent") or child:IsA("RemoteFunction") then tag = " [REMOTE]"
-            elseif child:IsA("LocalScript") or child:IsA("ModuleScript") then tag = " [SCRIPT]"
-            elseif child:IsA("ScreenGui") then tag = " [GUI]"
-            end
+    for i, child in ipairs(visibleChildren) do
+        local isLast = (i == #visibleChildren)
+        local prefix = isLast and "└── " or "├── "
+        local subIndent = isLast and "    " or "│   "
 
-            if tag ~= "" or #child:GetChildren() > 0 then
-                table.insert(buffer, indent .. prefix .. sanitize(child.Name) .. tag)
-                generate_tree_map_impl(child, indent .. subIndent, buffer)
-            end
+        -- Identify interesting objects
+        local tag = ""
+        if child:IsA("RemoteEvent") or child:IsA("RemoteFunction") then tag = " [REMOTE]"
+        elseif child:IsA("LocalScript") or child:IsA("ModuleScript") then tag = " [SCRIPT]"
+        elseif child:IsA("ScreenGui") then tag = " [GUI]"
+        end
+
+        if tag ~= "" or #child:GetChildren() > 0 then
+            table.insert(buffer, indent .. prefix .. sanitize(child.Name) .. tag)
+            generate_tree_map_impl(child, indent .. subIndent, buffer)
         end
     end
 end
