@@ -79,14 +79,19 @@ local function get_script_source(scriptObj)
     return source
 end
 
--- 5. PROPERTY DUMPER
+-- 5. HELPER: SANITIZE
+local function sanitize(val)
+    return (tostring(val):gsub("\r", "\\r"):gsub("\n", "\\n"))
+end
+
+-- 6. PROPERTY DUMPER
 local function get_properties_string(obj)
     local props = nil
 
     if obj:IsA("BasePart") then
         if obj:IsA("Seat") or obj:IsA("VehicleSeat") then
             props = props or {}
-            table.insert(props, "Occupant: " .. (obj.Occupant and obj.Occupant:GetFullName() or "nil"))
+            table.insert(props, "Occupant: " .. (obj.Occupant and sanitize(obj.Occupant:GetFullName()) or "nil"))
             table.insert(props, "Disabled: " .. tostring(obj.Disabled))
         else
             -- Only log interesting parts to reduce spam
@@ -102,12 +107,12 @@ local function get_properties_string(obj)
         props = props or {}
         table.insert(props, "Enabled: " .. tostring(obj.Enabled))
         table.insert(props, "Grip: " .. tostring(obj.Grip))
-        if obj.ToolTip ~= "" then table.insert(props, "ToolTip: " .. obj.ToolTip) end
-        if obj.TextureId ~= "" then table.insert(props, "TextureId: " .. obj.TextureId) end
+        if obj.ToolTip ~= "" then table.insert(props, "ToolTip: " .. sanitize(obj.ToolTip)) end
+        if obj.TextureId ~= "" then table.insert(props, "TextureId: " .. sanitize(obj.TextureId)) end
     elseif obj:IsA("ProximityPrompt") then
         props = props or {}
-        table.insert(props, "ActionText: " .. obj.ActionText)
-        table.insert(props, "ObjectText: " .. obj.ObjectText)
+        table.insert(props, "ActionText: " .. sanitize(obj.ActionText))
+        table.insert(props, "ObjectText: " .. sanitize(obj.ObjectText))
         table.insert(props, "HoldDuration: " .. tostring(obj.HoldDuration))
         table.insert(props, "KeyCode: " .. tostring(obj.KeyboardKeyCode))
     elseif obj:IsA("Humanoid") then
@@ -122,17 +127,17 @@ local function get_properties_string(obj)
         table.insert(props, "MaxActivationDistance: " .. tostring(obj.MaxActivationDistance))
     elseif obj:IsA("StringValue") or obj:IsA("IntValue") or obj:IsA("BoolValue") or obj:IsA("NumberValue") then
         props = props or {}
-        table.insert(props, "Value: " .. tostring(obj.Value))
+        table.insert(props, "Value: " .. sanitize(obj.Value))
     elseif obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
         props = props or {}
-        table.insert(props, 'Text: "' .. obj.Text .. '"')
+        table.insert(props, 'Text: "' .. sanitize(obj.Text) .. '"')
         table.insert(props, "Visible: " .. tostring(obj.Visible))
         if obj:IsA("TextButton") or obj:IsA("TextBox") then
             table.insert(props, "Active: " .. tostring(obj.Active))
         end
     elseif obj:IsA("ImageButton") or obj:IsA("ImageLabel") then
         props = props or {}
-        table.insert(props, "Image: " .. tostring(obj.Image))
+        table.insert(props, "Image: " .. sanitize(obj.Image))
         table.insert(props, "Visible: " .. tostring(obj.Visible))
         if obj:IsA("ImageButton") then
             table.insert(props, "Active: " .. tostring(obj.Active))
@@ -163,7 +168,7 @@ local function generate_tree_map_impl(root, indent, buffer)
             end
 
             if tag ~= "" or #child:GetChildren() > 0 then
-                table.insert(buffer, indent .. prefix .. child.Name .. tag)
+                table.insert(buffer, indent .. prefix .. sanitize(child.Name) .. tag)
                 generate_tree_map_impl(child, indent .. subIndent, buffer)
             end
         end
@@ -180,17 +185,17 @@ local function process_object(obj)
     -- Dump Properties
     local props = get_properties_string(obj)
     if props then
-        append_log("[PROPERTIES] " .. obj:GetFullName() .. " | " .. props)
+        append_log("[PROPERTIES] " .. sanitize(obj:GetFullName()) .. " | " .. props)
     end
 
     -- Log Remote
     if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-        append_log("[REMOTE DETECTED] " .. obj:GetFullName())
+        append_log("[REMOTE DETECTED] " .. sanitize(obj:GetFullName()))
     end
 
     -- Dump Script
     if obj:IsA("LocalScript") or obj:IsA("ModuleScript") then
-        append_log("\n>>> SOURCE: " .. obj:GetFullName())
+        append_log("\n>>> SOURCE: " .. sanitize(obj:GetFullName()))
 
         -- Decompile
         local source = get_script_source(obj)
