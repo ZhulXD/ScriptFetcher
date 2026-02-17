@@ -58,8 +58,6 @@ end
 
 -- 4. ROBUST DECOMPILER
 local function get_script_source(scriptObj)
-    if not (scriptObj:IsA("LocalScript") or scriptObj:IsA("ModuleScript")) then return nil end
-
     local attempts = 0
     local success = false
     local source = "-- [Failed to decompile]"
