@@ -1,4 +1,4 @@
-local HttpService = game:GetService("HttpService")
+content = r"""local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
 local CorePackages = game:GetService("CorePackages")
@@ -293,3 +293,7 @@ end
 return {
     execute_full_scan = execute_full_scan
 }
+"""
+
+with open("Game_Context_Scanner.lua", "w") as f:
+    f.write(content)
