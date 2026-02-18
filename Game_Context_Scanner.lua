@@ -1,4 +1,12 @@
 local Players = game:GetService("Players")
+-- ATTEMPT TO RESOLVE DECOMPILER
+local decompile = decompile
+if not decompile and type(getgenv) == "function" then
+    decompile = getgenv().decompile
+end
+if not decompile and debug and debug.decompile then
+    decompile = debug.decompile
+end
 
 local FILENAME = "Game_Context_" .. game.PlaceId .. ".txt"
 local success, err = pcall(function()
