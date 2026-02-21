@@ -166,7 +166,8 @@ local function get_properties_string(obj)
 end
 
 -- 6. TREE MAP GENERATOR (Optimized with table buffer)
-local function generate_tree_map_impl(root, indent, buffer, cachedChildren)
+local function generate_tree_map_impl(root, indent, buffer, cachedChildren, yield_counter)
+    yield_counter = yield_counter or {count = 0}
     local children = cachedChildren or root:GetChildren()
     local visibleChildren = {}
 
@@ -177,6 +178,12 @@ local function generate_tree_map_impl(root, indent, buffer, cachedChildren)
     end
 
     for i, child in ipairs(visibleChildren) do
+        yield_counter.count += 1
+        if yield_counter.count >= 100 then
+            yield_counter.count = 0
+            task.wait()
+        end
+
         local isLast = (i == #visibleChildren)
         local prefix = isLast and "└── " or "├── "
         local subIndent = isLast and "    " or "│   "
@@ -237,12 +244,20 @@ local function process_object(obj)
     end
 end
 
-local function deep_scan_recursive(root)
+local function deep_scan_recursive(root, yield_counter)
+    yield_counter = yield_counter or {count = 0}
+
     local children = root:GetChildren()
     for _, child in ipairs(children) do
         if not should_ignore(child) then
+            yield_counter.count += 1
+            if yield_counter.count >= 100 then
+                yield_counter.count = 0
+                task.wait()
+            end
+
             process_object(child)
-            deep_scan_recursive(child)
+            deep_scan_recursive(child, yield_counter)
         end
     end
 end
