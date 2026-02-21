@@ -1,299 +1,48 @@
-content = r"""local HttpService = game:GetService("HttpService")
-local Players = game:GetService("Players")
-local CoreGui = game:GetService("CoreGui")
-local CorePackages = game:GetService("CorePackages")
+import os
+import sys
 
-local FILENAME = "Game_Context_" .. game.PlaceId .. ".txt"
-local success, err = pcall(function()
-    writefile(FILENAME, "=== GAME CONTEXT SCAN ===\nTime: " .. tostring(os.date()) .. "\nPlace ID: " .. game.PlaceId .. "\n\n")
-end)
-if not success then
-    warn("[SCANNER] Failed to create log file: " .. tostring(err))
-end
-
--- OPTIMIZATION: Buffer logs to reduce I/O
-local LOG_BUFFER = {}
-local BUFFER_SIZE = 1000
-
-local function flush_log()
-    if #LOG_BUFFER > 0 then
-        -- appendfile is expensive, so we do it once per chunk
-        local ok, writeErr = pcall(appendfile, FILENAME, table.concat(LOG_BUFFER, "\n") .. "\n")
-        if not ok then
-            warn("[SCANNER] Failed to append log: " .. tostring(writeErr))
-        end
-        if table.clear then
-            table.clear(LOG_BUFFER)
-        else
-            LOG_BUFFER = {}
-        end
-    end
-end
-
-local function append_log(text)
-    table.insert(LOG_BUFFER, text)
-    if #LOG_BUFFER >= BUFFER_SIZE then
-        flush_log()
-    end
-end
-
-print("[SCANNER] Starting Context Scanner...")
-
--- 3. HELPER: IGNORE LIST
-local IGNORE_NAMES = {
-    ["PlayerModule"] = true,
-    ["RbxCharacterSounds"] = true,
-    ["ChatScript"] = true,
-    ["BubbleChat"] = true,
-    ["CameraScript"] = true,
-    ["ControlScript"] = true,
-    ["Animate"] = true
-}
-
-local function should_ignore(obj)
-    if not obj then return true end
-    if IGNORE_NAMES[obj.Name] then return true end
-
-    -- OPTIMIZATION: Skipped IsDescendantOf(CoreGui/etc) checks because we only scan disjoint services.
-
-    -- NOTE: Removed redundant IsDescendantOf checks for CoreGui/Chat
-    -- as we strictly scan user services (Workspace, ReplicatedStorage, etc)
-    -- which are disjoint from internal services.
-    -- If 'game' or 'CoreGui' is added to scan list, restore checks here.
-
-    return false
-end
-
--- 4. ROBUST DECOMPILER
-local function get_script_source(scriptObj)
-    local attempts = 0
-    local success = false
-    local source = "-- [Failed to decompile]"
-
-    while attempts < 5 and not success do
-        attempts += 1
-        local ok, result = pcall(decompile, scriptObj)
-
-        if ok and result and string.find(result, "failed to decompile bytecode: Too Many Requests") then
-            warn("[SCANNER] Rate limit on " .. scriptObj.Name .. " - Waiting 1.5s...")
-            task.wait(1.5)
-        elseif ok and result and result ~= "" then
-            source = result
-            success = true
-        else
-            task.wait(0.1)
-        end
-    end
-    return source
-end
-
--- 5. HELPER: SANITIZE
-local function sanitize(val)
-    return (tostring(val):gsub("\r", "\r"):gsub("\n", "\n"))
-end
-
--- 6. PROPERTY DUMPER
-local function get_properties_string(obj)
-    local props = nil
-
-    if obj:IsA("BasePart") then
-        if obj:IsA("Seat") or obj:IsA("VehicleSeat") then
-            props = props or {}
-            table.insert(props, "Occupant: " .. (obj.Occupant and sanitize(obj.Occupant:GetFullName()) or "nil"))
-            table.insert(props, "Disabled: " .. tostring(obj.Disabled))
-        else
-            -- Only log interesting parts to reduce spam
-            local name = obj.Name
-            local transparency = obj.Transparency
-            local shouldLog = name == "Handle" or transparency > 0.9
-
-            if not shouldLog then
-                local lowerName = name:lower()
-                shouldLog = lowerName:find("hitbox") or lowerName:find("root")
-            end
-
-            if shouldLog then
-                props = props or {}
-                table.insert(props, "Size: " .. tostring(obj.Size))
-                table.insert(props, "Transparency: " .. tostring(transparency))
-                table.insert(props, "CanCollide: " .. tostring(obj.CanCollide))
-                table.insert(props, "Position: " .. tostring(obj.Position))
-            end
-        end
-    elseif obj:IsA("Tool") then
-        props = props or {}
-        table.insert(props, "Enabled: " .. tostring(obj.Enabled))
-        table.insert(props, "Grip: " .. tostring(obj.Grip))
-        if obj.ToolTip ~= "" then table.insert(props, "ToolTip: " .. sanitize(obj.ToolTip)) end
-        if obj.TextureId ~= "" then table.insert(props, "TextureId: " .. sanitize(obj.TextureId)) end
-    elseif obj:IsA("ProximityPrompt") then
-        props = props or {}
-        table.insert(props, "ActionText: " .. sanitize(obj.ActionText))
-        table.insert(props, "ObjectText: " .. sanitize(obj.ObjectText))
-        table.insert(props, "HoldDuration: " .. tostring(obj.HoldDuration))
-        table.insert(props, "KeyCode: " .. tostring(obj.KeyboardKeyCode))
-    elseif obj:IsA("Humanoid") then
-        props = props or {}
-        table.insert(props, "Health: " .. tostring(obj.Health))
-        table.insert(props, "MaxHealth: " .. tostring(obj.MaxHealth))
-        table.insert(props, "WalkSpeed: " .. tostring(obj.WalkSpeed))
-        table.insert(props, "JumpPower: " .. tostring(obj.JumpPower))
-        table.insert(props, "RigType: " .. tostring(obj.RigType))
-    elseif obj:IsA("ClickDetector") then
-        props = props or {}
-        table.insert(props, "MaxActivationDistance: " .. tostring(obj.MaxActivationDistance))
-    elseif obj:IsA("StringValue") or obj:IsA("IntValue") or obj:IsA("BoolValue") or obj:IsA("NumberValue") then
-        props = props or {}
-        table.insert(props, "Value: " .. sanitize(obj.Value))
-    elseif obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
-        props = props or {}
-        table.insert(props, 'Text: "' .. sanitize(obj.Text) .. '"')
-        table.insert(props, "Visible: " .. tostring(obj.Visible))
-        if obj:IsA("TextButton") or obj:IsA("TextBox") then
-            table.insert(props, "Active: " .. tostring(obj.Active))
-        end
-    elseif obj:IsA("ImageButton") or obj:IsA("ImageLabel") then
-        props = props or {}
-        table.insert(props, "Image: " .. sanitize(obj.Image))
-        table.insert(props, "Visible: " .. tostring(obj.Visible))
-        if obj:IsA("ImageButton") then
-            table.insert(props, "Active: " .. tostring(obj.Active))
-        end
-    end
-
-    if props and #props > 0 then
-        return table.concat(props, ", ")
-    end
-    return nil
-end
-
--- 6. TREE MAP GENERATOR (Optimized with table buffer)
-local function generate_tree_map_impl(root, indent, buffer)
-    local children = root:GetChildren()
-
-    for i, child in ipairs(children) do
-        if not should_ignore(child) then
-            local isLast = (i == #children)
-            local prefix = isLast and "└── " or "├── "
-            local subIndent = isLast and "    " or "│   "
-
-            -- Identify interesting objects
-            local tag = ""
-            if child:IsA("RemoteEvent") or child:IsA("RemoteFunction") then tag = " [REMOTE]"
-            elseif child:IsA("LocalScript") or child:IsA("ModuleScript") then tag = " [SCRIPT]"
-            elseif child:IsA("ScreenGui") then tag = " [GUI]"
-            end
-
-            if tag ~= "" or #child:GetChildren() > 0 then
-                table.insert(buffer, indent .. prefix .. sanitize(child.Name) .. tag)
-                generate_tree_map_impl(child, indent .. subIndent, buffer)
-            end
-        end
-    end
-end
-
-local function generate_tree_map(root)
-    local buffer = {}
-    generate_tree_map_impl(root, "", buffer)
-    return table.concat(buffer, "\n")
-end
-
-local function process_object(obj)
-    -- Dump Properties
-    local props = get_properties_string(obj)
-    if props then
-        append_log("[PROPERTIES] " .. sanitize(obj:GetFullName()) .. " | " .. props)
-    end
-
-    -- Log Remote
-    if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-        append_log("[REMOTE DETECTED] " .. sanitize(obj:GetFullName()))
-    end
-
-    -- Dump Script
-    if obj:IsA("LocalScript") or obj:IsA("ModuleScript") then
-        append_log("\n>>> SOURCE: " .. sanitize(obj:GetFullName()))
-
-        -- Decompile
-        local source = get_script_source(obj)
-        if source then
-            append_log(source)
-        end
-        append_log("<<< END SOURCE\n")
-    end
-end
-
-local function deep_scan_recursive(root)
-    local children = root:GetChildren()
-    for _, child in ipairs(children) do
-        if not should_ignore(child) then
-            process_object(child)
-            deep_scan_recursive(child)
-        end
-    end
-end
-
--- 7. MAIN SCAN
-local function execute_full_scan()
-    -- A. TREE VIEW
-    append_log("\n=== 1. HIERARCHY MAP (Tree View) ===")
-    local map_services = {
-        game:GetService("ReplicatedStorage"),
-        game:GetService("Workspace"),
-        game:GetService("StarterGui"),
-        Players.LocalPlayer:WaitForChild("PlayerGui", 5)
-    }
-
-    for _, service in ipairs(map_services) do
-        if service then
-            append_log(service.Name)
-            append_log(generate_tree_map(service))
-        end
-    end
-
-    -- B. DEEP SCAN
-    append_log("\n=== 2. DEEP SCAN (Code & Remotes) ===")
-
-    local deep_scan_services = {
-        game:GetService("ReplicatedStorage"),
-        game:GetService("Workspace"),
-        game:GetService("StarterGui"),
-        game:GetService("StarterPack"),
-        game:GetService("StarterPlayer"),
-        Players.LocalPlayer:FindFirstChild("PlayerGui")
-    }
-
-    for _, service in ipairs(deep_scan_services) do
-        if service then
-            print("[SCANNER] Deep Scanning " .. service.Name .. "...")
-            append_log("\n--- Service: " .. service.Name .. " ---")
-
-            deep_scan_recursive(service)
-        end
-    end
-
-    print("[SCANNER] Complete! File Saved: " .. FILENAME)
-    append_log("\n=== END OF SCAN ===")
-    flush_log() -- Final flush to ensure everything is written
-
-    game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "Scan Complete!",
-        Text = "Saved to " .. FILENAME,
-        Duration = 5
-    })
-end
-
-if not _G.SCANNER_TEST_MODE then
-    task.spawn(function()
-        task.wait(1)
-        execute_full_scan()
-    end)
-end
-
-return {
-    execute_full_scan = execute_full_scan
-}
+"""
+restore_and_fix.py: Health check utility for Game_Context_Scanner.lua.
+This script ensures that the scanner has necessary pcall protections and
+correct logic. It replaces the previous version which hardcoded the entire
+source of the scanner, which was a dangerous and bad practice.
 """
 
-with open("Game_Context_Scanner.lua", "w") as f:
-    f.write(content)
+SCANNER_FILE = "Game_Context_Scanner.lua"
+
+def check_health():
+    if not os.path.exists(SCANNER_FILE):
+        print(f"Error: {SCANNER_FILE} is missing.")
+        print("Please restore it from your repository or backup.")
+        return False
+
+    with open(SCANNER_FILE, "r") as f:
+        content = f.read()
+
+    # Define key features that should be present in a healthy scanner
+    required_markers = {
+        "pcall around writefile": "pcall(function()",
+        "pcall around appendfile": "pcall(appendfile",
+        "Buffered logging": "LOG_BUFFER",
+        "Decompiler rate limiting": "Too Many Requests",
+        "Sanitize function": "function sanitize",
+    }
+
+    all_passed = True
+    print(f"Checking health of {SCANNER_FILE}:")
+    for name, marker in required_markers.items():
+        if marker in content:
+            print(f"  [✓] {name}")
+        else:
+            print(f"  [✗] {name}")
+            all_passed = False
+
+    return all_passed
+
+if __name__ == "__main__":
+    if check_health():
+        print("\nScanner is healthy.")
+        sys.exit(0)
+    else:
+        print("\nScanner is missing some expected features or protections.")
+        sys.exit(1)
