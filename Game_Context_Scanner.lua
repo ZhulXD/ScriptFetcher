@@ -190,7 +190,17 @@ local function generate_tree_map_impl(root, indent, buffer, cachedChildren)
 
         local grandChildren = child:GetChildren()
         if tag ~= "" or #grandChildren > 0 then
-            table.insert(buffer, indent .. prefix .. sanitize(child.Name) .. tag)
+            if #buffer > 0 then
+                table.insert(buffer, "\n")
+            end
+            if indent ~= "" then
+                table.insert(buffer, indent)
+            end
+            table.insert(buffer, prefix)
+            table.insert(buffer, sanitize(child.Name))
+            if tag ~= "" then
+                table.insert(buffer, tag)
+            end
             generate_tree_map_impl(child, indent .. subIndent, buffer, grandChildren)
         end
     end
@@ -199,7 +209,7 @@ end
 local function generate_tree_map(root)
     local buffer = {}
     generate_tree_map_impl(root, "", buffer)
-    return table.concat(buffer, "\n")
+    return table.concat(buffer)
 end
 
 local function process_object(obj)
