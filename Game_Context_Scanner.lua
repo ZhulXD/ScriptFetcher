@@ -1,4 +1,28 @@
-local Players = game:GetService("Players")
+local game = game
+local getgenv = getgenv
+local cloneref = cloneref
+
+-- Fix: Robust initialization for environments with restricted/broken 'game'
+if not pcall(function() return game:GetService("Players") end) then
+    if type(getgenv) == "function" and pcall(function() return getgenv().game end) then
+        game = getgenv().game
+    end
+    if type(cloneref) == "function" and pcall(function() return cloneref(game) end) then
+        local s, r = pcall(cloneref, game)
+        if s and r then game = r end
+    end
+end
+
+local function GetService(name)
+    if not game then return nil end
+    local success, service = pcall(function() return game:GetService(name) end)
+    if success and service then return service end
+    -- Fallback for some exploits or older environments
+    return game:FindFirstChild(name) or game[name]
+end
+
+local Players = GetService("Players")
+
 local math = math
 -- ATTEMPT TO RESOLVE DECOMPILER
 local decompile = decompile
