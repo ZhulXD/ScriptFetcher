@@ -69,19 +69,19 @@ local function should_ignore(obj, ignore_list)
     -- as we strictly scan user services (Workspace, ReplicatedStorage, etc)
     -- which are disjoint from internal services.
     -- If 'game' or 'CoreGui' is added to scan list, restore checks here.
-
     return false
 end
 
 -- 5. HELPER: SANITIZE
 -- Defined earlier to ensure availability
-local ESCAPES = {
-    ["\r"] = "\\r",
-    ["\n"] = "\\n"
-}
-
 local function sanitize(val)
-    return (tostring(val):gsub("[\r\n]", ESCAPES))
+    return (tostring(val):gsub("[%c]", function(c)
+        if c == "\n" then return "\\n" end
+        if c == "\r" then return "\\r" end
+        if c == "\t" then return "\\t" end
+        return string.format("\\%03d", string.byte(c))
+    end))
+end
 end
 
 -- 4. ROBUST DECOMPILER
