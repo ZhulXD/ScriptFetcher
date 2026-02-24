@@ -1,4 +1,5 @@
 local Players = game:GetService("Players")
+local math = math
 -- ATTEMPT TO RESOLVE DECOMPILER
 local decompile = decompile
 if not decompile and type(getgenv) == "function" then
@@ -93,6 +94,7 @@ local function get_script_source(scriptObj)
     local attempts = 0
     local success = false
     local source = "-- [Failed to decompile]"
+    local retry_delay = 0.02
 
     while attempts < 5 and not success do
         attempts = attempts + 1
@@ -105,7 +107,10 @@ local function get_script_source(scriptObj)
             source = result
             success = true
         else
-            task.wait(0.1)
+            if attempts < 5 then
+                task.wait(retry_delay)
+                retry_delay = math.min(0.1, retry_delay * 2)
+            end
         end
     end
     return source
@@ -347,6 +352,7 @@ if _G.SCANNER_TEST_MODE then
     export.should_ignore = should_ignore
     export.get_properties_string = get_properties_string
     export.generate_tree_map = generate_tree_map
+    export.get_script_source = get_script_source
 end
 
 return export
