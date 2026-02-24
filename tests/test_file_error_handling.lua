@@ -1,15 +1,12 @@
 -- tests/test_file_error_handling.lua
-_G.SCANNER_TEST_MODE = true
-
--- Load mocks (but we will override file ops)
-dofile("tests/mock_roblox.lua")
+local helper = dofile("tests/test_helper.lua")
 
 -- Override file functions to simulate failure
 function writefile(f, c) error("writefile failed") end
 function appendfile(f, c) error("appendfile failed") end
 
 print("Loading scanner...")
-local status, result = pcall(dofile, "Game_Context_Scanner.lua")
+local status, result = pcall(helper.load_scanner)
 
 if not status then
     print("FAILURE: Script crashed on load (top-level writefile?): " .. tostring(result))

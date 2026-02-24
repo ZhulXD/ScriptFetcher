@@ -1,6 +1,6 @@
 -- Reproduction script for Synchronous Scanning DoS
-_G.SCANNER_TEST_MODE = true
-local mock = dofile("tests/mock_roblox.lua")
+local helper = dofile("tests/test_helper.lua")
+local mock = helper.mock
 
 -- Mock task.wait to track calls
 local wait_count = 0
@@ -8,10 +8,10 @@ task.wait = function(n)
     wait_count = wait_count + 1
 end
 
-local scanner = dofile("Game_Context_Scanner.lua")
+local scanner = helper.load_scanner()
 
 -- Create a large hierarchy
-local rs = game:GetService("ReplicatedStorage")
+local rs = helper.game:GetService("ReplicatedStorage")
 local current = rs
 for i = 1, 100 do
     current = mock.create_instance("Folder", "Folder" .. i, current)

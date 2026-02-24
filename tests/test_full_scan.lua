@@ -1,14 +1,11 @@
 -- Integration Test for Full Scan Execution
-_G.SCANNER_TEST_MODE = true
-
-print("Loading mocks...")
-local mock = dofile("tests/mock_roblox.lua")
-
-print("Loading scanner...")
-local scanner = dofile("Game_Context_Scanner.lua")
+print("Loading mocks and scanner...")
+local helper = dofile("tests/test_helper.lua")
+local mock = helper.mock
+local scanner = helper.load_scanner()
 
 print("Setting up test hierarchy...")
-local rs = game:GetService("ReplicatedStorage")
+local rs = helper.game:GetService("ReplicatedStorage")
 mock.create_instance("RemoteEvent", "TestRemote", rs)
 local folder = mock.create_instance("Folder", "TestFolder", rs)
 mock.create_instance("LocalScript", "TestScript", folder)
