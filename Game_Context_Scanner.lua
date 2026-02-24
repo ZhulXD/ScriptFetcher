@@ -44,20 +44,24 @@ end
 
 print("[SCANNER] Starting Context Scanner...")
 
--- 3. HELPER: IGNORE LIST
-local IGNORE_NAMES = {
-    ["PlayerModule"] = true,
-    ["RbxCharacterSounds"] = true,
-    ["ChatScript"] = true,
-    ["BubbleChat"] = true,
-    ["CameraScript"] = true,
-    ["ControlScript"] = true,
-    ["Animate"] = true
+-- 3. CONFIGURATION: DEFAULT IGNORE LIST
+local DEFAULT_CONFIG = {
+    ignore_list = {
+        ["PlayerModule"] = true,
+        ["RbxCharacterSounds"] = true,
+        ["ChatScript"] = true,
+        ["BubbleChat"] = true,
+        ["CameraScript"] = true,
+        ["ControlScript"] = true,
+        ["Animate"] = true
+    }
 }
 
-local function should_ignore(obj)
+local function should_ignore(obj, ignore_list)
     if not obj then return true end
-    if IGNORE_NAMES[obj.Name] then return true end
+    -- Fallback to default if not provided
+    local list = ignore_list or DEFAULT_CONFIG.ignore_list
+    if list[obj.Name] then return true end
 
     -- OPTIMIZATION: Skipped IsDescendantOf(CoreGui/etc) checks because we only scan disjoint services.
 
@@ -171,19 +175,19 @@ local function get_properties_string(obj)
 end
 
 -- 6. TREE MAP GENERATOR (Optimized with table buffer)
-local function generate_tree_map_impl(root, indent, buffer, cachedChildren, yield_counter)
+local function generate_tree_map_impl(root, indent, buffer, cachedChildren, yield_counter, ignore_list)
     yield_counter = yield_counter or {count = 0}
     local children = cachedChildren or root:GetChildren()
     local visibleChildren = {}
 
     for _, child in ipairs(children) do
-        if not should_ignore(child) then
+        if not should_ignore(child, ignore_list) then
             table.insert(visibleChildren, child)
         end
     end
 
     for i, child in ipairs(visibleChildren) do
-        yield_counter.count += 1
+        yield_counter.count = yield_counter.count + 1
         if yield_counter.count >= 100 then
             yield_counter.count = 0
             task.wait()
@@ -213,14 +217,14 @@ local function generate_tree_map_impl(root, indent, buffer, cachedChildren, yiel
             if tag ~= "" then
                 table.insert(buffer, tag)
             end
-            generate_tree_map_impl(child, indent .. subIndent, buffer, grandChildren)
+            generate_tree_map_impl(child, indent .. subIndent, buffer, grandChildren, nil, ignore_list)
         end
     end
 end
 
-local function generate_tree_map(root)
+local function generate_tree_map(root, ignore_list)
     local buffer = {}
-    generate_tree_map_impl(root, "", buffer)
+    generate_tree_map_impl(root, "", buffer, nil, nil, ignore_list)
     return table.concat(buffer)
 end
 
@@ -249,26 +253,32 @@ local function process_object(obj)
     end
 end
 
-local function deep_scan_recursive(root, yield_counter)
+local function deep_scan_recursive(root, yield_counter, ignore_list)
     yield_counter = yield_counter or {count = 0}
 
     local children = root:GetChildren()
     for _, child in ipairs(children) do
-        if not should_ignore(child) then
-            yield_counter.count += 1
+        if not should_ignore(child, ignore_list) then
+            yield_counter.count = yield_counter.count + 1
             if yield_counter.count >= 100 then
                 yield_counter.count = 0
                 task.wait()
             end
 
             process_object(child)
-            deep_scan_recursive(child, yield_counter)
+            deep_scan_recursive(child, yield_counter, ignore_list)
         end
     end
 end
 
 -- 7. MAIN SCAN
-local function execute_full_scan()
+local function execute_full_scan(config)
+    -- Merge config
+    local current_ignore_list = DEFAULT_CONFIG.ignore_list
+    if config and config.ignore_list then
+        current_ignore_list = config.ignore_list
+    end
+
     -- A. TREE VIEW
     append_log("\n=== 1. HIERARCHY MAP (Tree View) ===")
     local map_services = {
@@ -281,7 +291,7 @@ local function execute_full_scan()
     for _, service in ipairs(map_services) do
         if service then
             append_log(sanitize(service.Name))
-            append_log(generate_tree_map(service))
+            append_log(generate_tree_map(service, current_ignore_list))
         end
     end
 
@@ -302,7 +312,7 @@ local function execute_full_scan()
             print("[SCANNER] Deep Scanning " .. sanitize(service.Name) .. "...")
             append_log("\n--- Service: " .. sanitize(service.Name) .. " ---")
 
-            deep_scan_recursive(service)
+            deep_scan_recursive(service, nil, current_ignore_list)
         end
     end
 
@@ -325,7 +335,8 @@ if not _G.SCANNER_TEST_MODE then
 end
 
 local export = {
-    execute_full_scan = execute_full_scan
+    execute_full_scan = execute_full_scan,
+    DEFAULT_CONFIG = DEFAULT_CONFIG
 }
 
 if _G.SCANNER_TEST_MODE then
