@@ -1,11 +1,8 @@
 -- Unit Tests for Game_Context_Scanner.lua
-_G.SCANNER_TEST_MODE = true
-
-print("Loading mocks...")
-local mock = dofile("tests/mock_roblox.lua")
-
-print("Loading scanner...")
-local scanner = dofile("Game_Context_Scanner.lua")
+print("Loading mocks and scanner...")
+local helper = dofile("tests/test_helper.lua")
+local mock = helper.mock
+local scanner = helper.load_scanner()
 
 local passed = 0
 local failed = 0

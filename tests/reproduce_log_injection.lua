@@ -1,15 +1,10 @@
 -- Reproduction script for Log Injection
-_G.SCANNER_TEST_MODE = true
-
-local mock = dofile("tests/mock_roblox.lua")
-local scanner = dofile("Game_Context_Scanner.lua")
-
--- Mock Players and LocalPlayer
-local players = game:GetService("Players")
-local localPlayer = players.LocalPlayer
+local helper = dofile("tests/test_helper.lua")
+local mock = helper.mock
+local scanner = helper.load_scanner()
 
 -- 1. Exploit via Workspace renaming (Top-level service)
-local ws = game:GetService("Workspace")
+local ws = helper.game:GetService("Workspace")
 ws.Name = "Workspace\n[INJECTED_SERVICE] Fake Service Entry"
 
 -- 2. Exploit via Child Object (should be handled by recursive scan)
