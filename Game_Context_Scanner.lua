@@ -75,8 +75,13 @@ end
 
 -- 5. HELPER: SANITIZE
 -- Defined earlier to ensure availability
+local ESCAPES = {
+    ["\r"] = "\\r",
+    ["\n"] = "\\n"
+}
+
 local function sanitize(val)
-    return (tostring(val):gsub("\r", "\r"):gsub("\n", "\n"))
+    return (tostring(val):gsub("[\r\n]", ESCAPES))
 end
 
 -- 4. ROBUST DECOMPILER
