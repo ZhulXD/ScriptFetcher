@@ -18,12 +18,12 @@ end
 
 -- OPTIMIZATION: Buffer logs to reduce I/O
 local LOG_BUFFER = {}
-local BUFFER_SIZE = 1000
+local BUFFER_SIZE = 5000
 
 local function flush_log()
     if #LOG_BUFFER > 0 then
         -- appendfile is expensive, so we do it once per chunk
-        local ok, writeErr = pcall(appendfile, FILENAME, table.concat(LOG_BUFFER, "\n") .. "\n")
+        local ok, writeErr = pcall(appendfile, FILENAME, table.concat(LOG_BUFFER, ""))
         if not ok then
             warn("[SCANNER] Failed to append log: " .. tostring(writeErr))
         end
@@ -35,8 +35,11 @@ local function flush_log()
     end
 end
 
-local function append_log(text)
-    table.insert(LOG_BUFFER, text)
+local function append_log(...)
+    for _, v in ipairs({...}) do
+        table.insert(LOG_BUFFER, v)
+    end
+    table.insert(LOG_BUFFER, "\n")
     if #LOG_BUFFER >= BUFFER_SIZE then
         flush_log()
     end
@@ -232,17 +235,17 @@ local function process_object(obj)
     -- Dump Properties
     local props = get_properties_string(obj)
     if props then
-        append_log("[PROPERTIES] " .. sanitize(obj:GetFullName()) .. " | " .. props)
+        append_log("[PROPERTIES] ", sanitize(obj:GetFullName()), " | ", props)
     end
 
     -- Log Remote
     if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-        append_log("[REMOTE DETECTED] " .. sanitize(obj:GetFullName()))
+        append_log("[REMOTE DETECTED] ", sanitize(obj:GetFullName()))
     end
 
     -- Dump Script
     if obj:IsA("LocalScript") or obj:IsA("ModuleScript") then
-        append_log("\n>>> SOURCE: " .. sanitize(obj:GetFullName()))
+        append_log("\n>>> SOURCE: ", sanitize(obj:GetFullName()))
 
         -- Decompile
         local source = get_script_source(obj)
@@ -310,7 +313,7 @@ local function execute_full_scan(config)
     for _, service in ipairs(deep_scan_services) do
         if service then
             print("[SCANNER] Deep Scanning " .. sanitize(service.Name) .. "...")
-            append_log("\n--- Service: " .. sanitize(service.Name) .. " ---")
+            append_log("\n--- Service: ", sanitize(service.Name), " ---")
 
             deep_scan_recursive(service, nil, current_ignore_list)
         end
