@@ -48,8 +48,8 @@ print("Running Unit Tests...")
 -- Test sanitize
 if scanner.sanitize then
     print("Testing sanitize...")
-    assert_equal("foo\nbar", scanner.sanitize("foo\nbar"), "Newline escape")
-    assert_equal("foo\rbar", scanner.sanitize("foo\rbar"), "Carriage return escape")
+    assert_equal("foo\\nbar", scanner.sanitize("foo\nbar"), "Newline escape")
+    assert_equal("foo\\rbar", scanner.sanitize("foo\rbar"), "Carriage return escape")
     assert_equal("nil", scanner.sanitize(nil), "Nil handling")
 else
     print("FAIL: sanitize function not exported")
