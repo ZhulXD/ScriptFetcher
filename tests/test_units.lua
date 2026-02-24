@@ -48,8 +48,8 @@ print("Running Unit Tests...")
 -- Test sanitize
 if scanner.sanitize then
     print("Testing sanitize...")
-    assert_equal("foo\\nbar", scanner.sanitize("foo\nbar"), "Newline escape")
-    assert_equal("foo\\rbar", scanner.sanitize("foo\rbar"), "Carriage return escape")
+    assert_equal("foo\nbar", scanner.sanitize("foo\nbar"), "Newline escape")
+    assert_equal("foo\rbar", scanner.sanitize("foo\rbar"), "Carriage return escape")
     assert_equal("nil", scanner.sanitize(nil), "Nil handling")
 else
     print("FAIL: sanitize function not exported")
@@ -62,9 +62,15 @@ if scanner.should_ignore then
     local ignoredObj = { Name = "ChatScript" }
     local validObj = { Name = "MyScript" }
 
-    assert_equal(true, scanner.should_ignore(ignoredObj), "Should ignore ChatScript")
-    assert_equal(false, scanner.should_ignore(validObj), "Should not ignore MyScript")
+    -- 1. Default behavior (nil ignore_list)
+    assert_equal(true, scanner.should_ignore(ignoredObj), "Should ignore ChatScript (default)")
+    assert_equal(false, scanner.should_ignore(validObj), "Should not ignore MyScript (default)")
     assert_equal(true, scanner.should_ignore(nil), "Should ignore nil")
+
+    -- 2. Custom ignore list
+    local customIgnore = { ["MyScript"] = true }
+    assert_equal(true, scanner.should_ignore(validObj, customIgnore), "Should ignore MyScript with custom list")
+    assert_equal(false, scanner.should_ignore(ignoredObj, customIgnore), "Should NOT ignore ChatScript with custom list (override)")
 else
     print("FAIL: should_ignore function not exported")
     failed = failed + 1
@@ -203,9 +209,30 @@ if scanner.generate_tree_map then
     local root = mock.create_instance("Folder", "Root")
     local child1 = mock.create_instance("Part", "Child1", root)
     local child3 = mock.create_instance("LocalScript", "ClientScript", root)
+    local childIgnore = mock.create_instance("LocalScript", "ChatScript", root)
 
+    -- 1. Default (ignore ChatScript)
     local tree = scanner.generate_tree_map(root)
     assert_match("ClientScript %[SCRIPT%]", tree, "Tree map includes script")
+    if string.match(tree, "ChatScript") then
+        print("FAIL: Default tree map includes ChatScript")
+        failed = failed + 1
+    else
+        passed = passed + 1
+    end
+
+    -- 2. Custom Ignore (Include ChatScript, Ignore ClientScript)
+    local customIgnore = { ["ClientScript"] = true }
+    local treeCustom = scanner.generate_tree_map(root, customIgnore)
+
+    assert_match("ChatScript %[SCRIPT%]", treeCustom, "Custom tree map includes ChatScript")
+    if string.match(treeCustom, "ClientScript") then
+        print("FAIL: Custom tree map includes ClientScript (should be ignored)")
+        failed = failed + 1
+    else
+        passed = passed + 1
+    end
+
 else
     print("FAIL: generate_tree_map function not exported")
     failed = failed + 1
