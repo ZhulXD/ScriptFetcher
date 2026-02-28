@@ -110,7 +110,6 @@ local function sanitize(val)
         return string.format("\\%03d", string.byte(c))
     end))
 end
-end
 
 -- 4. ROBUST DECOMPILER
 local function get_script_source(scriptObj)
