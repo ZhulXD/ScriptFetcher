@@ -14,7 +14,7 @@ if not pcall(function() return game:GetService("Players") end) then
 end
 
 local function GetService(name)
-    if not game then return nil end
+    if not game then return end
     local success, service = pcall(function() return game:GetService(name) end)
     if success and service then return service end
     -- Fallback for some exploits or older environments
@@ -203,7 +203,6 @@ local function get_properties_string(obj)
     if #props > 0 then
         return table.concat(props, ", ")
     end
-    return nil
 end
 
 -- 6. TREE MAP GENERATOR (Optimized with table buffer)
