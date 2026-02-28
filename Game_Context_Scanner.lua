@@ -33,7 +33,7 @@ if not decompile and debug and debug.decompile then
     decompile = debug.decompile
 end
 
-local FILENAME = "Game_Context_" .. game.PlaceId .. ".txt"
+local FILENAME = "Game_Context_" .. tostring(game.PlaceId):gsub("[^%w]", "") .. ".txt"
 local success, err = pcall(function()
     writefile(FILENAME, "=== GAME CONTEXT SCAN ===\nTime: " .. tostring(os.date()) .. "\nPlace ID: " .. game.PlaceId .. "\n\n")
 end)
