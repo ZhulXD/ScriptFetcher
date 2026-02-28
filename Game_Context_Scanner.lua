@@ -61,7 +61,8 @@ local function flush_log()
 end
 
 local function append_log(...)
-    for _, v in ipairs({...}) do
+    for i = 1, select("#", ...) do
+        local v = select(i, ...)
         table.insert(LOG_BUFFER, v)
     end
     table.insert(LOG_BUFFER, "\n")
@@ -109,7 +110,6 @@ local function sanitize(val)
         if c == "\t" then return "\\t" end
         return string.format("\\%03d", string.byte(c))
     end))
-end
 end
 
 -- 4. ROBUST DECOMPILER
