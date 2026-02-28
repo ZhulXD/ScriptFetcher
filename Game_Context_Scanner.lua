@@ -2,7 +2,7 @@ local game = game
 local getgenv = getgenv
 local cloneref = cloneref
 
--- Fix: Robust initialization for environments with restricted/broken 'game'
+-- Robust initialization for environments with restricted/broken 'game'
 if not pcall(function() return game:GetService("Players") end) then
     if type(getgenv) == "function" and pcall(function() return getgenv().game end) then
         game = getgenv().game
