@@ -174,6 +174,14 @@ if scanner.get_properties_string then
     boolVal.Value = true
     assert_match("Value: true", scanner.get_properties_string(boolVal), "BoolValue check")
 
+    local stringVal = mock.create_instance("StringValue", "Message")
+    stringVal.Value = "Hello\nWorld"
+    assert_match("Value: Hello\\nWorld", scanner.get_properties_string(stringVal), "StringValue check with newline")
+
+    local numberVal = mock.create_instance("NumberValue", "Health")
+    numberVal.Value = 3.1415
+    assert_match("Value: 3.1415", scanner.get_properties_string(numberVal), "NumberValue check")
+
     -- 10. GUI Objects
     local label = mock.create_instance("TextLabel", "Title")
     label.Text = "Welcome"
