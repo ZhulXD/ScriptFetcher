@@ -23,7 +23,6 @@ end
 
 local Players = GetService("Players")
 
-local math = math
 -- ATTEMPT TO RESOLVE DECOMPILER
 local decompile = decompile
 if not decompile and type(getgenv) == "function" then
