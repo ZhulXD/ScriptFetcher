@@ -53,11 +53,7 @@ local function flush_log()
         if not ok then
             warn("[SCANNER] Failed to append log: " .. tostring(writeErr))
         end
-        if table.clear then
-            table.clear(LOG_BUFFER)
-        else
-            LOG_BUFFER = {}
-        end
+        LOG_BUFFER = {}
     end
 end
 
