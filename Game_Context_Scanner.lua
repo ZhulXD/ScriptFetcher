@@ -141,6 +141,7 @@ end
 
 -- 6. PROPERTY DUMPER
 local function get_properties_string(obj)
+    if not obj or (type(obj) ~= "table" and type(obj) ~= "userdata") or type(obj.IsA) ~= "function" then return end
     local props = {}
 
     if obj:IsA("BasePart") then
