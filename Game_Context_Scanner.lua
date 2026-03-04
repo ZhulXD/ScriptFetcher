@@ -2,6 +2,8 @@ local game = game
 local getgenv = getgenv
 local cloneref = cloneref
 
+local SCANNER_TEST_MODE = ... == true
+
 -- Robust initialization for environments with restricted/broken 'game'
 if not pcall(function() return game:GetService("Players") end) then
     if type(getgenv) == "function" and pcall(function() return getgenv().game end) then
@@ -358,7 +360,7 @@ local function execute_full_scan(config)
     })
 end
 
-if not _G.SCANNER_TEST_MODE then
+if not SCANNER_TEST_MODE then
     task.spawn(function()
         task.wait(1)
         execute_full_scan()
@@ -370,7 +372,7 @@ local export = {
     DEFAULT_CONFIG = DEFAULT_CONFIG
 }
 
-if _G.SCANNER_TEST_MODE then
+if SCANNER_TEST_MODE then
     export.sanitize = sanitize
     export.should_ignore = should_ignore
     export.get_properties_string = get_properties_string
