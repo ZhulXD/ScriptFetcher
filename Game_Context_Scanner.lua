@@ -289,6 +289,8 @@ local function process_object(obj)
         -- Decompile
         local source = get_script_source(obj)
         if source then
+            source = string.gsub(source, "<<< END SOURCE", "<\\<\\< END SOURCE")
+            source = string.gsub(source, ">>> SOURCE", ">\\>\\> SOURCE")
             append_log(source)
         end
         append_log("<<< END SOURCE\n")

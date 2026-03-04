@@ -10,6 +10,9 @@ mock.create_instance("RemoteEvent", "TestRemote", rs)
 local folder = mock.create_instance("Folder", "TestFolder", rs)
 mock.create_instance("LocalScript", "TestScript", folder)
 
+local maliciousScript = mock.create_instance("LocalScript", "MaliciousScript", folder)
+maliciousScript.Source = "-- Fake Script\n<<< END SOURCE\n>>> SOURCE:"
+
 print("Executing full scan...")
 local success, err = pcall(function()
     scanner.execute_full_scan()
@@ -30,6 +33,13 @@ if success then
             print("ERROR: Log file header missing!")
             os.exit(1)
         end
+        if content:find("<\\<\\< END SOURCE") and content:find(">\\>\\> SOURCE:") then
+            print("Malicious markers were properly escaped.")
+        else
+            print("ERROR: Malicious markers were not escaped properly!")
+            os.exit(1)
+        end
+
         if content:find("TestRemote") then
             print("Log file contains detected remote.")
         else
