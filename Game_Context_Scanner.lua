@@ -58,12 +58,15 @@ local function flush_log()
 end
 
 local function append_log(...)
+    local len = #LOG_BUFFER
     for i = 1, select("#", ...) do
         local v = select(i, ...)
-        table.insert(LOG_BUFFER, v)
+        len = len + 1
+        LOG_BUFFER[len] = v
     end
-    table.insert(LOG_BUFFER, "\n")
-    if #LOG_BUFFER >= BUFFER_SIZE then
+    len = len + 1
+    LOG_BUFFER[len] = "\n"
+    if len >= BUFFER_SIZE then
         flush_log()
     end
 end
