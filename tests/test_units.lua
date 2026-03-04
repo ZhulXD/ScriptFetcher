@@ -203,6 +203,14 @@ if scanner.get_properties_string then
     assert_match("Image: rbxassetid://456", imgProps, "ImageButton Image check")
     assert_match("Visible: false", imgProps, "ImageButton Visible check")
 
+    -- 11. Edge Cases (Unexpected Inputs)
+    print("Testing get_properties_string edge cases...")
+    assert_nil(scanner.get_properties_string(nil), "Should handle nil input")
+    assert_nil(scanner.get_properties_string("not an object"), "Should handle string input")
+    assert_nil(scanner.get_properties_string(123), "Should handle number input")
+    assert_nil(scanner.get_properties_string({}), "Should handle empty table")
+    assert_nil(scanner.get_properties_string({ Name = "Fake" }), "Should handle table without IsA")
+
 else
     print("FAIL: get_properties_string function not exported")
     failed = failed + 1
