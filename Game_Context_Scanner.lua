@@ -102,14 +102,24 @@ local function should_ignore(obj, ignore_list)
 end
 
 -- 5. HELPER: SANITIZE
--- Defined earlier to ensure availability
+-- Precompute lookup table for control characters to avoid string.format and function overhead
+local CONTROL_CHARS = {}
+for i = 0, 31 do
+    local c = string.char(i)
+    if c == "\n" then
+        CONTROL_CHARS[c] = "\\n"
+    elseif c == "\r" then
+        CONTROL_CHARS[c] = "\\r"
+    elseif c == "\t" then
+        CONTROL_CHARS[c] = "\\t"
+    else
+        CONTROL_CHARS[c] = string.format("\\%03d", i)
+    end
+end
+CONTROL_CHARS[string.char(127)] = "\\127"
+
 local function sanitize(val)
-    return (tostring(val):gsub("[%c]", function(c)
-        if c == "\n" then return "\\n" end
-        if c == "\r" then return "\\r" end
-        if c == "\t" then return "\\t" end
-        return string.format("\\%03d", string.byte(c))
-    end))
+    return (tostring(val):gsub("[%c]", CONTROL_CHARS))
 end
 
 -- 4. ROBUST DECOMPILER
