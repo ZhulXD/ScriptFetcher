@@ -389,6 +389,8 @@ if SCANNER_TEST_MODE then
     export.get_properties_string = get_properties_string
     export.generate_tree_map = generate_tree_map
     export.get_script_source = get_script_source
+    export.flush_log = flush_log
+    export.append_log = append_log
 end
 
 return export
