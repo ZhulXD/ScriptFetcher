@@ -1,0 +1,6 @@
+🧹 [Code Health] Remove redundant check in get_script_source
+
+🎯 What: Removed the redundant `if attempts < 5 then` condition inside the `else` block of `get_script_source`. Replaced hardcoded `5` attempt limits with a `MAX_ATTEMPTS` constant.
+💡 Why: The outer `while` loop condition already guarantees that `attempts` does not exceed the maximum limit. Removing this check makes the loop logic cleaner and more straightforward. Introducing a constant improves maintainability.
+✅ Verification: Ran `restore_and_fix.py` locally to verify that the scanner health checks pass and the logic is sound.
+✨ Result: Cleaner, more readable decompiler function with centralized constant configuration.

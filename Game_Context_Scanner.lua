@@ -123,6 +123,8 @@ local function sanitize(val)
 end
 
 -- 4. ROBUST DECOMPILER
+local MAX_ATTEMPTS = 5
+
 local function get_script_source(scriptObj)
     if not decompile then return "-- [Decompiler not available]" end
     local attempts = 0
@@ -130,7 +132,7 @@ local function get_script_source(scriptObj)
     local source = "-- [Failed to decompile]"
     local retry_delay = 0.02
 
-    while attempts < 5 and not success do
+    while attempts < MAX_ATTEMPTS and not success do
         attempts = attempts + 1
         local ok, result = pcall(decompile, scriptObj)
 
@@ -141,10 +143,8 @@ local function get_script_source(scriptObj)
             source = result
             success = true
         else
-            if attempts < 5 then
-                task.wait(retry_delay)
-                retry_delay = math.min(0.1, retry_delay * 2)
-            end
+            task.wait(retry_delay)
+            retry_delay = math.min(0.1, retry_delay * 2)
         end
     end
     return source
