@@ -251,6 +251,76 @@ else
     failed = failed + 1
 end
 
+
+-- Test get_script_source
+if scanner.get_script_source then
+    print("Testing get_script_source...")
+
+    local original_task_wait = task.wait
+
+    -- Mock task.wait so tests run fast
+    task.wait = function() end
+
+    local dummyScript = { Name = "TestScript" }
+
+    -- Helper to reload scanner with new global decompile state
+    local function run_decompile_test(mock_decompile)
+        -- `mock_roblox.lua` exports `decompile` to the global state.
+        -- We redefine the global to our test function so that when the scanner
+        -- is dynamically loaded, `local decompile = decompile` captures the mock correctly.
+        _G.decompile = mock_decompile
+        decompile = mock_decompile
+
+        local loaded = helper.load_scanner()
+        return loaded.get_script_source(dummyScript)
+    end
+
+    -- 1. Decompiler missing
+    local res1 = run_decompile_test(nil)
+    assert_equal("-- [Decompiler not available]", res1, "Decompiler missing handling")
+
+    -- 2. Success first try
+    local res2 = run_decompile_test(function(obj) return "print('hello')" end)
+    assert_equal("print('hello')", res2, "Successful decompilation")
+
+    -- 3. Rate limit success after retry
+    local rateLimitCalls = 0
+    local res3 = run_decompile_test(function(obj)
+        rateLimitCalls = rateLimitCalls + 1
+        if rateLimitCalls < 3 then
+            return "failed to decompile bytecode: Too Many Requests"
+        end
+        return "print('success')"
+    end)
+    assert_equal("print('success')", res3, "Rate limit retry success")
+    assert_equal(3, rateLimitCalls, "Rate limit should have called decompile 3 times")
+
+    -- 4. Rate limit exhausted
+    rateLimitCalls = 0
+    local res4 = run_decompile_test(function(obj)
+        rateLimitCalls = rateLimitCalls + 1
+        return "failed to decompile bytecode: Too Many Requests"
+    end)
+    assert_equal("-- [Failed to decompile]", res4, "Rate limit exhausted")
+    assert_equal(5, rateLimitCalls, "Rate limit should exhaust at 5 attempts")
+
+    -- 5. Hard failure
+    local hardFailCalls = 0
+    local res5 = run_decompile_test(function(obj)
+        hardFailCalls = hardFailCalls + 1
+        error("Some internal error")
+    end)
+    assert_equal("-- [Failed to decompile]", res5, "Hard failure handling")
+    assert_equal(5, hardFailCalls, "Hard failure should exhaust retries")
+
+    -- Restore mocks
+    task.wait = original_task_wait
+else
+    print("FAIL: get_script_source function not exported")
+    failed = failed + 1
+end
+
+
 print("\nTest Summary: " .. passed .. " passed, " .. failed .. " failed.")
 
 if failed > 0 then
