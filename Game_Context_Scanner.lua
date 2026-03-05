@@ -151,63 +151,113 @@ local function get_script_source(scriptObj)
 end
 
 -- 6. PROPERTY DUMPER
+local function handle_seat(obj, props)
+    local len = #props
+    len = len + 1; props[len] = "Occupant: " .. (obj.Occupant and sanitize(obj.Occupant:GetFullName()) or "nil")
+    len = len + 1; props[len] = "Disabled: " .. tostring(obj.Disabled)
+end
+
+local function handle_basepart(obj, props)
+    -- Only log interesting parts to reduce spam
+    local name = obj.Name
+    local transparency = obj.Transparency
+    local shouldLog = name == "Handle" or transparency > 0.9
+
+    if not shouldLog then
+        local lowerName = name:lower()
+        shouldLog = lowerName:find("hitbox") or lowerName:find("root")
+    end
+
+    if shouldLog then
+        local len = #props
+        len = len + 1; props[len] = "Size: " .. tostring(obj.Size)
+        len = len + 1; props[len] = "Transparency: " .. tostring(transparency)
+        len = len + 1; props[len] = "CanCollide: " .. tostring(obj.CanCollide)
+        len = len + 1; props[len] = "Position: " .. tostring(obj.Position)
+    end
+end
+
+local function handle_tool(obj, props)
+    local len = #props
+    len = len + 1; props[len] = "Enabled: " .. tostring(obj.Enabled)
+    len = len + 1; props[len] = "Grip: " .. tostring(obj.Grip)
+    if obj.ToolTip ~= "" then len = len + 1; props[len] = "ToolTip: " .. sanitize(obj.ToolTip) end
+    if obj.TextureId ~= "" then len = len + 1; props[len] = "TextureId: " .. sanitize(obj.TextureId) end
+end
+
+local function handle_proximity_prompt(obj, props)
+    local len = #props
+    len = len + 1; props[len] = "ActionText: " .. sanitize(obj.ActionText)
+    len = len + 1; props[len] = "ObjectText: " .. sanitize(obj.ObjectText)
+    len = len + 1; props[len] = "HoldDuration: " .. tostring(obj.HoldDuration)
+    len = len + 1; props[len] = "KeyCode: " .. tostring(obj.KeyboardKeyCode)
+end
+
+local function handle_humanoid(obj, props)
+    local len = #props
+    len = len + 1; props[len] = "Health: " .. tostring(obj.Health)
+    len = len + 1; props[len] = "MaxHealth: " .. tostring(obj.MaxHealth)
+    len = len + 1; props[len] = "WalkSpeed: " .. tostring(obj.WalkSpeed)
+    len = len + 1; props[len] = "JumpPower: " .. tostring(obj.JumpPower)
+    len = len + 1; props[len] = "RigType: " .. tostring(obj.RigType)
+end
+
+local function handle_click_detector(obj, props)
+    local len = #props
+    len = len + 1; props[len] = "MaxActivationDistance: " .. tostring(obj.MaxActivationDistance)
+end
+
+local function handle_value(obj, props)
+    local len = #props
+    len = len + 1; props[len] = "Value: " .. sanitize(obj.Value)
+end
+
+local function handle_text(obj, props)
+    local len = #props
+    len = len + 1; props[len] = 'Text: "' .. sanitize(obj.Text) .. '"'
+    len = len + 1; props[len] = "Visible: " .. tostring(obj.Visible)
+    if obj:IsA("TextButton") or obj:IsA("TextBox") then
+        len = len + 1; props[len] = "Active: " .. tostring(obj.Active)
+    end
+end
+
+local function handle_image(obj, props)
+    local len = #props
+    len = len + 1; props[len] = "Image: " .. sanitize(obj.Image)
+    len = len + 1; props[len] = "Visible: " .. tostring(obj.Visible)
+    if obj:IsA("ImageButton") then
+        len = len + 1; props[len] = "Active: " .. tostring(obj.Active)
+    end
+end
+
+local PROPERTY_HANDLERS = {
+    { class = "Seat", handler = handle_seat },
+    { class = "VehicleSeat", handler = handle_seat },
+    { class = "BasePart", handler = handle_basepart },
+    { class = "Tool", handler = handle_tool },
+    { class = "ProximityPrompt", handler = handle_proximity_prompt },
+    { class = "Humanoid", handler = handle_humanoid },
+    { class = "ClickDetector", handler = handle_click_detector },
+    { class = "StringValue", handler = handle_value },
+    { class = "IntValue", handler = handle_value },
+    { class = "BoolValue", handler = handle_value },
+    { class = "NumberValue", handler = handle_value },
+    { class = "TextLabel", handler = handle_text },
+    { class = "TextButton", handler = handle_text },
+    { class = "TextBox", handler = handle_text },
+    { class = "ImageButton", handler = handle_image },
+    { class = "ImageLabel", handler = handle_image }
+}
+
 local function get_properties_string(obj)
     if not obj or (type(obj) ~= "table" and type(obj) ~= "userdata") or type(obj.IsA) ~= "function" then return end
     local props = {}
 
-    if obj:IsA("BasePart") then
-        if obj:IsA("Seat") or obj:IsA("VehicleSeat") then
-            table.insert(props, "Occupant: " .. (obj.Occupant and sanitize(obj.Occupant:GetFullName()) or "nil"))
-            table.insert(props, "Disabled: " .. tostring(obj.Disabled))
-        else
-            -- Only log interesting parts to reduce spam
-            local name = obj.Name
-            local transparency = obj.Transparency
-            local shouldLog = name == "Handle" or transparency > 0.9
-
-            if not shouldLog then
-                local lowerName = name:lower()
-                shouldLog = lowerName:find("hitbox") or lowerName:find("root")
-            end
-
-            if shouldLog then
-                table.insert(props, "Size: " .. tostring(obj.Size))
-                table.insert(props, "Transparency: " .. tostring(transparency))
-                table.insert(props, "CanCollide: " .. tostring(obj.CanCollide))
-                table.insert(props, "Position: " .. tostring(obj.Position))
-            end
-        end
-    elseif obj:IsA("Tool") then
-        table.insert(props, "Enabled: " .. tostring(obj.Enabled))
-        table.insert(props, "Grip: " .. tostring(obj.Grip))
-        if obj.ToolTip ~= "" then table.insert(props, "ToolTip: " .. sanitize(obj.ToolTip)) end
-        if obj.TextureId ~= "" then table.insert(props, "TextureId: " .. sanitize(obj.TextureId)) end
-    elseif obj:IsA("ProximityPrompt") then
-        table.insert(props, "ActionText: " .. sanitize(obj.ActionText))
-        table.insert(props, "ObjectText: " .. sanitize(obj.ObjectText))
-        table.insert(props, "HoldDuration: " .. tostring(obj.HoldDuration))
-        table.insert(props, "KeyCode: " .. tostring(obj.KeyboardKeyCode))
-    elseif obj:IsA("Humanoid") then
-        table.insert(props, "Health: " .. tostring(obj.Health))
-        table.insert(props, "MaxHealth: " .. tostring(obj.MaxHealth))
-        table.insert(props, "WalkSpeed: " .. tostring(obj.WalkSpeed))
-        table.insert(props, "JumpPower: " .. tostring(obj.JumpPower))
-        table.insert(props, "RigType: " .. tostring(obj.RigType))
-    elseif obj:IsA("ClickDetector") then
-        table.insert(props, "MaxActivationDistance: " .. tostring(obj.MaxActivationDistance))
-    elseif obj:IsA("StringValue") or obj:IsA("IntValue") or obj:IsA("BoolValue") or obj:IsA("NumberValue") then
-        table.insert(props, "Value: " .. sanitize(obj.Value))
-    elseif obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
-        table.insert(props, 'Text: "' .. sanitize(obj.Text) .. '"')
-        table.insert(props, "Visible: " .. tostring(obj.Visible))
-        if obj:IsA("TextButton") or obj:IsA("TextBox") then
-            table.insert(props, "Active: " .. tostring(obj.Active))
-        end
-    elseif obj:IsA("ImageButton") or obj:IsA("ImageLabel") then
-        table.insert(props, "Image: " .. sanitize(obj.Image))
-        table.insert(props, "Visible: " .. tostring(obj.Visible))
-        if obj:IsA("ImageButton") then
-            table.insert(props, "Active: " .. tostring(obj.Active))
+    for i = 1, #PROPERTY_HANDLERS do
+        local mapping = PROPERTY_HANDLERS[i]
+        if obj:IsA(mapping.class) then
+            mapping.handler(obj, props)
+            break
         end
     end
 
