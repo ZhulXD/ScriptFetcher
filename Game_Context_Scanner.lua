@@ -271,10 +271,12 @@ local function generate_tree_map_impl(root, indent, buffer, cachedChildren, yiel
     yield_counter = yield_counter or {count = 0}
     local children = cachedChildren or root:GetChildren()
     local visibleChildren = {}
+    local vCount = 0
 
     for _, child in ipairs(children) do
         if not should_ignore(child, ignore_list) then
-            table.insert(visibleChildren, child)
+            vCount = vCount + 1
+            visibleChildren[vCount] = child
         end
     end
 
@@ -285,7 +287,7 @@ local function generate_tree_map_impl(root, indent, buffer, cachedChildren, yiel
             task.wait()
         end
 
-        local isLast = (i == #visibleChildren)
+        local isLast = (i == vCount)
         local prefix = isLast and "└── " or "├── "
         local subIndent = isLast and "    " or "│   "
 
@@ -298,16 +300,22 @@ local function generate_tree_map_impl(root, indent, buffer, cachedChildren, yiel
 
         local grandChildren = child:GetChildren()
         if tag ~= "" or #grandChildren > 0 then
-            if #buffer > 0 then
-                table.insert(buffer, "\n")
+            local bLen = #buffer
+            if bLen > 0 then
+                bLen = bLen + 1
+                buffer[bLen] = "\n"
             end
             if indent ~= "" then
-                table.insert(buffer, indent)
+                bLen = bLen + 1
+                buffer[bLen] = indent
             end
-            table.insert(buffer, prefix)
-            table.insert(buffer, sanitize(child.Name))
+            bLen = bLen + 1
+            buffer[bLen] = prefix
+            bLen = bLen + 1
+            buffer[bLen] = sanitize(child.Name)
             if tag ~= "" then
-                table.insert(buffer, tag)
+                bLen = bLen + 1
+                buffer[bLen] = tag
             end
             generate_tree_map_impl(child, indent .. subIndent, buffer, grandChildren, nil, ignore_list)
         end
