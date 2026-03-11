@@ -212,22 +212,24 @@ local function handle_value(obj, props)
     len = len + 1; props[len] = "Value: " .. sanitize(obj.Value)
 end
 
+local function handle_gui_object(obj, props)
+    local len = #props
+    len = len + 1; props[len] = "Visible: " .. tostring(obj.Visible)
+    if obj:IsA("GuiButton") or obj:IsA("TextBox") then
+        len = len + 1; props[len] = "Active: " .. tostring(obj.Active)
+    end
+end
+
 local function handle_text(obj, props)
     local len = #props
     len = len + 1; props[len] = 'Text: "' .. sanitize(obj.Text) .. '"'
-    len = len + 1; props[len] = "Visible: " .. tostring(obj.Visible)
-    if obj:IsA("TextButton") or obj:IsA("TextBox") then
-        len = len + 1; props[len] = "Active: " .. tostring(obj.Active)
-    end
+    handle_gui_object(obj, props)
 end
 
 local function handle_image(obj, props)
     local len = #props
     len = len + 1; props[len] = "Image: " .. sanitize(obj.Image)
-    len = len + 1; props[len] = "Visible: " .. tostring(obj.Visible)
-    if obj:IsA("ImageButton") then
-        len = len + 1; props[len] = "Active: " .. tostring(obj.Active)
-    end
+    handle_gui_object(obj, props)
 end
 
 local PROPERTY_HANDLERS = {
