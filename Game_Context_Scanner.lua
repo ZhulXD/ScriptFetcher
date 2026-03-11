@@ -136,10 +136,10 @@ local function get_script_source(scriptObj)
         attempts = attempts + 1
         local ok, result = pcall(decompile, scriptObj)
 
-        if ok and result and string.find(result, "failed to decompile bytecode: Too Many Requests", 1, true) then
+        if ok and type(result) == "string" and string.find(result, "failed to decompile bytecode: Too Many Requests", 1, true) then
             warn("[SCANNER] Rate limit on " .. sanitize(scriptObj.Name) .. " - Waiting 1.5s...")
             task.wait(1.5)
-        elseif ok and result and result ~= "" then
+        elseif ok and type(result) == "string" and result ~= "" then
             source = result
             success = true
         else
