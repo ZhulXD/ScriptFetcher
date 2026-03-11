@@ -350,6 +350,60 @@ else
 end
 
 
+
+-- Test process_object
+if scanner.process_object then
+    print("Testing process_object...")
+
+    local original_appendfile = appendfile
+    local file_outputs = {}
+
+    -- Mock appendfile globally
+    appendfile = function(filename, content)
+        if not file_outputs[filename] then
+            file_outputs[filename] = ""
+        end
+        file_outputs[filename] = file_outputs[filename] .. content
+    end
+
+    -- 1. Test RemoteEvent detection
+    local remoteEvent = mock.create_instance("RemoteEvent", "MyRemoteEvent")
+    scanner.process_object(remoteEvent)
+    scanner.flush_log() -- flush buffer to our mock appendfile
+
+    local foundRemoteEvent = false
+    for filename, content in pairs(file_outputs) do
+        if string.match(content, "%[REMOTE DETECTED%]") and string.match(content, "MyRemoteEvent") then
+            foundRemoteEvent = true
+            break
+        end
+    end
+    assert_equal(true, foundRemoteEvent, "RemoteEvent detection check")
+
+    -- reset file outputs
+    file_outputs = {}
+
+    -- 2. Test RemoteFunction detection
+    local remoteFunction = mock.create_instance("RemoteFunction", "MyRemoteFunction")
+    scanner.process_object(remoteFunction)
+    scanner.flush_log()
+
+    local foundRemoteFunction = false
+    for filename, content in pairs(file_outputs) do
+        if string.match(content, "%[REMOTE DETECTED%]") and string.match(content, "MyRemoteFunction") then
+            foundRemoteFunction = true
+            break
+        end
+    end
+    assert_equal(true, foundRemoteFunction, "RemoteFunction detection check")
+
+    -- Restore appendfile
+    appendfile = original_appendfile
+else
+    print("FAIL: process_object function not exported")
+    failed = failed + 1
+end
+
 print("\nTest Summary: " .. passed .. " passed, " .. failed .. " failed.")
 
 if failed > 0 then
