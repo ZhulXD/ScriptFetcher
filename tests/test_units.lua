@@ -252,6 +252,35 @@ else
 end
 
 
+-- Test GetService
+if scanner.GetService then
+    print("Testing GetService...")
+
+    local original_getservice = game.GetService
+    local original_findfirstchild = game.FindFirstChild
+
+    -- 1. Success first try
+    local workspace = scanner.GetService("Workspace")
+    assert_equal("Workspace", workspace and workspace.Name, "Standard GetService")
+
+    -- 2. Fallback to FindFirstChild
+    game.GetService = function() error("Simulated failure") end
+    local replicatedStorage = scanner.GetService("ReplicatedStorage")
+    assert_equal("ReplicatedStorage", replicatedStorage and replicatedStorage.Name, "Fallback to FindFirstChild")
+
+    -- 3. Fallback to direct indexing
+    game.FindFirstChild = function() return nil end
+    local starterGui = scanner.GetService("StarterGui")
+    assert_equal("StarterGui", starterGui and starterGui.Name, "Fallback to direct indexing")
+
+    -- Restore mocks
+    game.GetService = original_getservice
+    game.FindFirstChild = original_findfirstchild
+else
+    print("FAIL: GetService function not exported")
+    failed = failed + 1
+end
+
 -- Test get_script_source
 if scanner.get_script_source then
     print("Testing get_script_source...")

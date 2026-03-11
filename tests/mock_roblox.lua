@@ -92,6 +92,10 @@ function game:GetService(name)
     return self.services[name]
 end
 
+function game:FindFirstChild(name)
+    return self.services[name]
+end
+
 function game:GetChildren()
     local res = {}
     for _, s in pairs(self.services) do
@@ -99,6 +103,12 @@ function game:GetChildren()
     end
     return res
 end
+
+setmetatable(game, {
+    __index = function(self, key)
+        return self.services[key]
+    end
+})
 
 -- Players mock
 local players = game:GetService("Players")
