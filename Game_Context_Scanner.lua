@@ -441,6 +441,7 @@ if SCANNER_TEST_MODE then
     export.get_script_source = get_script_source
     export.flush_log = flush_log
     export.append_log = append_log
+    export.GetService = GetService
 end
 
 return export
