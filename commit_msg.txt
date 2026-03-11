@@ -1,6 +1,6 @@
-🧹 [Code Health] Remove redundant check in get_script_source
+🧹 Refactor duplicated list-building logic in property handlers
 
-🎯 What: Removed the redundant `if attempts < 5 then` condition inside the `else` block of `get_script_source`. Replaced hardcoded `5` attempt limits with a `MAX_ATTEMPTS` constant.
-💡 Why: The outer `while` loop condition already guarantees that `attempts` does not exceed the maximum limit. Removing this check makes the loop logic cleaner and more straightforward. Introducing a constant improves maintainability.
-✅ Verification: Ran `restore_and_fix.py` locally to verify that the scanner health checks pass and the logic is sound.
-✨ Result: Cleaner, more readable decompiler function with centralized constant configuration.
+🎯 What: Introduced an `add_prop` helper function to replace duplicated list-appending code (`local len = #props; len = len + 1; props[len] = ...`) across all property handlers (e.g., `handle_seat`, `handle_basepart`, etc.) in `Game_Context_Scanner.lua`.
+💡 Why: This significantly improves maintainability and readability by abstracting the repetitive string concatenation and array length management.
+✅ Verification: Ran `restore_and_fix.py` locally and verified that the scanner is healthy. Also manually reviewed the diff to ensure the output formatting remains exactly identical.
+✨ Result: Cleaned up around 30 lines of duplicate boilerplate code, making property handlers much easier to read and extend.
