@@ -3,7 +3,7 @@ import os
 from lupa import LuaRuntime
 
 def run_test(test_file):
-    lua = LuaRuntime(unpack_returned_tuples=True)
+    lua = LuaRuntime()
 
     def dofile(filename):
         # Resolve path relative to CWD
