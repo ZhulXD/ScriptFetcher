@@ -329,20 +329,22 @@ local function generate_tree_map(root, ignore_list)
 end
 
 local function process_object(obj)
+    local sanitized_name = sanitize(obj:GetFullName())
+
     -- Dump Properties
     local props = get_properties_string(obj)
     if props then
-        append_log("[PROPERTIES] ", sanitize(obj:GetFullName()), " | ", props)
+        append_log("[PROPERTIES] ", sanitized_name, " | ", props)
     end
 
     -- Log Remote
     if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-        append_log("[REMOTE DETECTED] ", sanitize(obj:GetFullName()))
+        append_log("[REMOTE DETECTED] ", sanitized_name)
     end
 
     -- Dump Script
     if obj:IsA("LocalScript") or obj:IsA("ModuleScript") then
-        append_log("\n>>> SOURCE: ", sanitize(obj:GetFullName()))
+        append_log("\n>>> SOURCE: ", sanitized_name)
 
         -- Decompile
         local source = get_script_source(obj)
