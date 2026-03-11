@@ -151,10 +151,14 @@ local function get_script_source(scriptObj)
 end
 
 -- 6. PROPERTY DUMPER
-local function handle_seat(obj, props)
+local function add_prop(props, key, value)
     local len = #props
-    len = len + 1; props[len] = "Occupant: " .. (obj.Occupant and sanitize(obj.Occupant:GetFullName()) or "nil")
-    len = len + 1; props[len] = "Disabled: " .. tostring(obj.Disabled)
+    len = len + 1; props[len] = key .. ": " .. tostring(value)
+end
+
+local function handle_seat(obj, props)
+    add_prop(props, "Occupant", obj.Occupant and sanitize(obj.Occupant:GetFullName()) or "nil")
+    add_prop(props, "Disabled", obj.Disabled)
 end
 
 local function handle_basepart(obj, props)
@@ -169,64 +173,56 @@ local function handle_basepart(obj, props)
     end
 
     if shouldLog then
-        local len = #props
-        len = len + 1; props[len] = "Size: " .. tostring(obj.Size)
-        len = len + 1; props[len] = "Transparency: " .. tostring(transparency)
-        len = len + 1; props[len] = "CanCollide: " .. tostring(obj.CanCollide)
-        len = len + 1; props[len] = "Position: " .. tostring(obj.Position)
+        add_prop(props, "Size", obj.Size)
+        add_prop(props, "Transparency", transparency)
+        add_prop(props, "CanCollide", obj.CanCollide)
+        add_prop(props, "Position", obj.Position)
     end
 end
 
 local function handle_tool(obj, props)
-    local len = #props
-    len = len + 1; props[len] = "Enabled: " .. tostring(obj.Enabled)
-    len = len + 1; props[len] = "Grip: " .. tostring(obj.Grip)
-    if obj.ToolTip ~= "" then len = len + 1; props[len] = "ToolTip: " .. sanitize(obj.ToolTip) end
-    if obj.TextureId ~= "" then len = len + 1; props[len] = "TextureId: " .. sanitize(obj.TextureId) end
+    add_prop(props, "Enabled", obj.Enabled)
+    add_prop(props, "Grip", obj.Grip)
+    if obj.ToolTip ~= "" then add_prop(props, "ToolTip", sanitize(obj.ToolTip)) end
+    if obj.TextureId ~= "" then add_prop(props, "TextureId", sanitize(obj.TextureId)) end
 end
 
 local function handle_proximity_prompt(obj, props)
-    local len = #props
-    len = len + 1; props[len] = "ActionText: " .. sanitize(obj.ActionText)
-    len = len + 1; props[len] = "ObjectText: " .. sanitize(obj.ObjectText)
-    len = len + 1; props[len] = "HoldDuration: " .. tostring(obj.HoldDuration)
-    len = len + 1; props[len] = "KeyCode: " .. tostring(obj.KeyboardKeyCode)
+    add_prop(props, "ActionText", sanitize(obj.ActionText))
+    add_prop(props, "ObjectText", sanitize(obj.ObjectText))
+    add_prop(props, "HoldDuration", obj.HoldDuration)
+    add_prop(props, "KeyCode", obj.KeyboardKeyCode)
 end
 
 local function handle_humanoid(obj, props)
-    local len = #props
-    len = len + 1; props[len] = "Health: " .. tostring(obj.Health)
-    len = len + 1; props[len] = "MaxHealth: " .. tostring(obj.MaxHealth)
-    len = len + 1; props[len] = "WalkSpeed: " .. tostring(obj.WalkSpeed)
-    len = len + 1; props[len] = "JumpPower: " .. tostring(obj.JumpPower)
-    len = len + 1; props[len] = "RigType: " .. tostring(obj.RigType)
+    add_prop(props, "Health", obj.Health)
+    add_prop(props, "MaxHealth", obj.MaxHealth)
+    add_prop(props, "WalkSpeed", obj.WalkSpeed)
+    add_prop(props, "JumpPower", obj.JumpPower)
+    add_prop(props, "RigType", obj.RigType)
 end
 
 local function handle_click_detector(obj, props)
-    local len = #props
-    len = len + 1; props[len] = "MaxActivationDistance: " .. tostring(obj.MaxActivationDistance)
+    add_prop(props, "MaxActivationDistance", obj.MaxActivationDistance)
 end
 
 local function handle_value(obj, props)
-    local len = #props
-    len = len + 1; props[len] = "Value: " .. sanitize(obj.Value)
+    add_prop(props, "Value", sanitize(obj.Value))
 end
 
 local function handle_text(obj, props)
-    local len = #props
-    len = len + 1; props[len] = 'Text: "' .. sanitize(obj.Text) .. '"'
-    len = len + 1; props[len] = "Visible: " .. tostring(obj.Visible)
+    add_prop(props, "Text", '"' .. sanitize(obj.Text) .. '"')
+    add_prop(props, "Visible", obj.Visible)
     if obj:IsA("TextButton") or obj:IsA("TextBox") then
-        len = len + 1; props[len] = "Active: " .. tostring(obj.Active)
+        add_prop(props, "Active", obj.Active)
     end
 end
 
 local function handle_image(obj, props)
-    local len = #props
-    len = len + 1; props[len] = "Image: " .. sanitize(obj.Image)
-    len = len + 1; props[len] = "Visible: " .. tostring(obj.Visible)
+    add_prop(props, "Image", sanitize(obj.Image))
+    add_prop(props, "Visible", obj.Visible)
     if obj:IsA("ImageButton") then
-        len = len + 1; props[len] = "Active: " .. tostring(obj.Active)
+        add_prop(props, "Active", obj.Active)
     end
 end
 
