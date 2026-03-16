@@ -218,11 +218,6 @@ local function handle_text(obj, props)
     end
 end
 
-local function handle_text(obj, props)
-    local len = #props
-    len = len + 1; props[len] = 'Text: "' .. sanitize(obj.Text) .. '"'
-    handle_gui_object(obj, props)
-end
 
 local function handle_image(obj, props)
     add_prop(props, "Image", sanitize(obj.Image))

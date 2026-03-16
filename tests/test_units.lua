@@ -265,11 +265,13 @@ if scanner.GetService then
 
     -- 2. Fallback to FindFirstChild
     game.GetService = function() error("Simulated failure") end
+    game.services["ReplicatedStorage"] = mock.create_instance("ReplicatedStorage", "ReplicatedStorage", game)
     local replicatedStorage = scanner.GetService("ReplicatedStorage")
     assert_equal("ReplicatedStorage", replicatedStorage and replicatedStorage.Name, "Fallback to FindFirstChild")
 
     -- 3. Fallback to direct indexing
     game.FindFirstChild = function() return nil end
+    game.services["StarterGui"] = mock.create_instance("StarterGui", "StarterGui", game)
     local starterGui = scanner.GetService("StarterGui")
     assert_equal("StarterGui", starterGui and starterGui.Name, "Fallback to direct indexing")
 
@@ -349,6 +351,68 @@ else
     failed = failed + 1
 end
 
+-- Test append_log and flush_log
+if scanner.append_log and scanner.flush_log then
+    print("Testing append_log and flush_log...")
+
+    local original_appendfile = appendfile
+    local captured_content = {}
+    local function mock_appendfile(filename, content)
+        table.insert(captured_content, content)
+    end
+
+    -- Override appendfile
+    _G.appendfile = mock_appendfile
+    appendfile = mock_appendfile
+
+    -- Reset scanner buffer
+    scanner.flush_log()
+    captured_content = {}
+
+    -- 1. Manual flush
+    scanner.append_log("test", " ", "manual")
+    scanner.flush_log()
+    assert_equal("test manual\n", captured_content[1], "Manual flush correctly concatenates logs")
+
+    -- Reset
+    captured_content = {}
+
+    -- 2. Auto-flush on BUFFER_SIZE
+    -- BUFFER_SIZE is 5000. Each append_log call adds the arguments PLUS a newline.
+    -- If we call append_log with 1 argument, it adds 2 items to LOG_BUFFER.
+    -- Calling it 2500 times will reach exactly 5000 items.
+    for i = 1, 2499 do
+        scanner.append_log("x")
+    end
+
+    -- At this point, length is 4998. No flush has happened yet.
+    assert_equal(nil, captured_content[1], "Buffer should not flush before size limit")
+
+    -- Next call reaches 5000 and should trigger flush.
+    scanner.append_log("x")
+    assert_equal(2500, #captured_content == 1 and select(2, string.gsub(captured_content[1], "x\n", "")) or 0, "Buffer should auto-flush when reaching size limit")
+
+    -- Reset
+    captured_content = {}
+
+    -- 3. Error handling in flush_log (pcall test)
+    local error_thrown = false
+    _G.appendfile = function() error("Simulated I/O error") end
+    appendfile = _G.appendfile
+
+    scanner.append_log("error test")
+    -- This should not crash the script, it should just warn (which prints to stdout/stderr but execution continues)
+    local ok, err = pcall(function() scanner.flush_log() end)
+
+    assert_equal(true, ok, "flush_log should safely handle appendfile errors")
+
+    -- Restore mocks
+    _G.appendfile = original_appendfile
+    appendfile = original_appendfile
+else
+    print("FAIL: append_log and flush_log functions not exported")
+    failed = failed + 1
+end
 
 print("\nTest Summary: " .. passed .. " passed, " .. failed .. " failed.")
 
