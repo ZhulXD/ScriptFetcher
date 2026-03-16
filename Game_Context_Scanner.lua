@@ -460,6 +460,7 @@ if SCANNER_TEST_MODE then
     export.flush_log = flush_log
     export.append_log = append_log
     export.GetService = GetService
+    export.process_object = process_object
 end
 
 return export
