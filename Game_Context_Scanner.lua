@@ -404,15 +404,7 @@ local function deep_scan_recursive(root, yield_counter, ignore_list)
     end
 end
 
--- 7. MAIN SCAN
-local function execute_full_scan(config)
-    -- Merge config
-    local current_ignore_list = DEFAULT_CONFIG.ignore_list
-    if config and config.ignore_list then
-        current_ignore_list = config.ignore_list
-    end
-
-    -- A. TREE VIEW
+local function do_tree_scan(current_ignore_list)
     append_log("\n=== 1. HIERARCHY MAP (Tree View) ===")
     local map_services = {
         game:GetService("ReplicatedStorage"),
@@ -427,8 +419,9 @@ local function execute_full_scan(config)
             append_log(generate_tree_map(service, current_ignore_list))
         end
     end
+end
 
-    -- B. DEEP SCAN
+local function do_deep_scan(current_ignore_list)
     append_log("\n=== 2. DEEP SCAN (Code & Remotes) ===")
 
     local deep_scan_services = {
@@ -448,6 +441,21 @@ local function execute_full_scan(config)
             deep_scan_recursive(service, nil, current_ignore_list)
         end
     end
+end
+
+-- 7. MAIN SCAN
+local function execute_full_scan(config)
+    -- Merge config
+    local current_ignore_list = DEFAULT_CONFIG.ignore_list
+    if config and config.ignore_list then
+        current_ignore_list = config.ignore_list
+    end
+
+    -- A. TREE VIEW
+    do_tree_scan(current_ignore_list)
+
+    -- B. DEEP SCAN
+    do_deep_scan(current_ignore_list)
 
     print("[SCANNER] Complete! File Saved: " .. FILENAME)
     append_log("\n=== END OF SCAN ===")
