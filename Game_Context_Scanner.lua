@@ -5,15 +5,21 @@ local cloneref = cloneref
 local SCANNER_TEST_MODE = ... == true
 
 -- Robust initialization for environments with restricted/broken 'game'
-if not pcall(function() return game:GetService("Players") end) then
+local function initialize_game(current_game)
+    if current_game and pcall(function() return current_game:GetService("Players") end) then
+        return current_game
+    end
     if type(getgenv) == "function" and pcall(function() return getgenv().game end) then
-        game = getgenv().game
+        current_game = getgenv().game
     end
-    if type(cloneref) == "function" and pcall(function() return cloneref(game) end) then
-        local s, r = pcall(cloneref, game)
-        if s and r then game = r end
+    if type(cloneref) == "function" and pcall(function() return cloneref(current_game) end) then
+        local s, r = pcall(cloneref, current_game)
+        if s and r then current_game = r end
     end
+    return current_game
 end
+
+game = initialize_game(game)
 
 local function GetService(name)
     if not game then return end

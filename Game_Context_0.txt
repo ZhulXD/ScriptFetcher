@@ -1,5 +1,5 @@
 === GAME CONTEXT SCAN ===
-Time: Mon Mar 16 21:30:52 2026
+Time: Mon Mar 16 21:31:43 2026
 Place ID: 0
 
 
@@ -27,9 +27,7 @@ PlayerGui
 
 
 >>> SOURCE: ReplicatedStorage.TestFolder.MaliciousScript
--- Fake Script
-<\<\< END SOURCE
->\>\> SOURCE:
+-- Mock decompiled source for MaliciousScript
 <<< END SOURCE
 
 
