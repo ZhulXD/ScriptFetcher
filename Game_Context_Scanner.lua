@@ -271,7 +271,11 @@ end
 -- 6. TREE MAP GENERATOR (Optimized with table buffer)
 local function generate_tree_map_impl(root, indent, buffer, cachedChildren, yield_counter, ignore_list)
     yield_counter = yield_counter or {count = 0}
-    local children = cachedChildren or root:GetChildren()
+    local children = cachedChildren
+    if not children then
+        local success, res = pcall(root.GetChildren, root)
+        children = success and type(res) == "table" and res or {}
+    end
     local visibleChildren = {}
     local vCount = 0
 
@@ -300,7 +304,8 @@ local function generate_tree_map_impl(root, indent, buffer, cachedChildren, yiel
         elseif child:IsA("ScreenGui") then tag = " [GUI]"
         end
 
-        local grandChildren = child:GetChildren()
+        local success, grandChildren = pcall(child.GetChildren, child)
+        grandChildren = success and type(grandChildren) == "table" and grandChildren or {}
         if tag ~= "" or #grandChildren > 0 then
             local bLen = #buffer
             if bLen > 0 then
@@ -362,7 +367,8 @@ end
 local function deep_scan_recursive(root, yield_counter, ignore_list)
     yield_counter = yield_counter or {count = 0}
 
-    local children = root:GetChildren()
+    local success, children = pcall(root.GetChildren, root)
+    children = success and type(children) == "table" and children or {}
     for _, child in ipairs(children) do
         if not should_ignore(child, ignore_list) then
             yield_counter.count = yield_counter.count + 1
