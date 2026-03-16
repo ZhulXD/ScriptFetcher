@@ -5,15 +5,21 @@ local cloneref = cloneref
 local SCANNER_TEST_MODE = ... == true
 
 -- Robust initialization for environments with restricted/broken 'game'
-if not pcall(function() return game:GetService("Players") end) then
+local function initialize_game(current_game)
+    if current_game and pcall(function() return current_game:GetService("Players") end) then
+        return current_game
+    end
     if type(getgenv) == "function" and pcall(function() return getgenv().game end) then
-        game = getgenv().game
+        current_game = getgenv().game
     end
-    if type(cloneref) == "function" and pcall(function() return cloneref(game) end) then
-        local s, r = pcall(cloneref, game)
-        if s and r then game = r end
+    if type(cloneref) == "function" and pcall(function() return cloneref(current_game) end) then
+        local s, r = pcall(cloneref, current_game)
+        if s and r then current_game = r end
     end
+    return current_game
 end
+
+game = initialize_game(game)
 
 local function GetService(name)
     if not game then return end
@@ -264,13 +270,15 @@ local function get_properties_string(obj)
 end
 
 -- 6. TREE MAP GENERATOR (Optimized with table buffer)
-local function generate_tree_map_impl(root, indent, buffer, cachedChildren, yield_counter, ignore_list)
+local function extract_tree_data(root, cachedChildren, yield_counter, ignore_list)
     yield_counter = yield_counter or {count = 0}
     local children = cachedChildren
     if not children then
         local success, res = pcall(root.GetChildren, root)
         children = success and type(res) == "table" and res or {}
     end
+
+    local nodes = {}
     local visibleChildren = {}
     local vCount = 0
 
@@ -288,10 +296,6 @@ local function generate_tree_map_impl(root, indent, buffer, cachedChildren, yiel
             task.wait()
         end
 
-        local isLast = (i == vCount)
-        local prefix = isLast and "└── " or "├── "
-        local subIndent = isLast and "    " or "│   "
-
         -- Identify interesting objects
         local tag = ""
         if child:IsA("RemoteEvent") or child:IsA("RemoteFunction") then tag = " [REMOTE]"
@@ -301,32 +305,60 @@ local function generate_tree_map_impl(root, indent, buffer, cachedChildren, yiel
 
         local success, grandChildren = pcall(child.GetChildren, child)
         grandChildren = success and type(grandChildren) == "table" and grandChildren or {}
-        if tag ~= "" or #grandChildren > 0 then
-            local bLen = #buffer
-            if bLen > 0 then
-                bLen = bLen + 1
-                buffer[bLen] = "\n"
-            end
-            if indent ~= "" then
-                bLen = bLen + 1
-                buffer[bLen] = indent
-            end
+
+        local childNodes = nil
+        if #grandChildren > 0 then
+            childNodes = extract_tree_data(child, grandChildren, yield_counter, ignore_list)
+        end
+
+        if tag ~= "" or (childNodes and #childNodes > 0) then
+            local len = #nodes
+            nodes[len + 1] = {
+                name = sanitize(child.Name),
+                tag = tag,
+                children = childNodes
+            }
+        end
+    end
+
+    return nodes
+end
+
+local function serialize_tree_data(nodes, indent, buffer)
+    local vCount = #nodes
+    for i, node in ipairs(nodes) do
+        local isLast = (i == vCount)
+        local prefix = isLast and "└── " or "├── "
+        local subIndent = isLast and "    " or "│   "
+
+        local bLen = #buffer
+        if bLen > 0 then
             bLen = bLen + 1
-            buffer[bLen] = prefix
+            buffer[bLen] = "\n"
+        end
+        if indent ~= "" then
             bLen = bLen + 1
-            buffer[bLen] = sanitize(child.Name)
-            if tag ~= "" then
-                bLen = bLen + 1
-                buffer[bLen] = tag
-            end
-            generate_tree_map_impl(child, indent .. subIndent, buffer, grandChildren, nil, ignore_list)
+            buffer[bLen] = indent
+        end
+        bLen = bLen + 1
+        buffer[bLen] = prefix
+        bLen = bLen + 1
+        buffer[bLen] = node.name
+        if node.tag ~= "" then
+            bLen = bLen + 1
+            buffer[bLen] = node.tag
+        end
+
+        if node.children and #node.children > 0 then
+            serialize_tree_data(node.children, indent .. subIndent, buffer)
         end
     end
 end
 
 local function generate_tree_map(root, ignore_list)
     local buffer = {}
-    generate_tree_map_impl(root, "", buffer, nil, nil, ignore_list)
+    local nodes = extract_tree_data(root, nil, nil, ignore_list)
+    serialize_tree_data(nodes, "", buffer)
     return table.concat(buffer)
 end
 
@@ -378,15 +410,7 @@ local function deep_scan_recursive(root, yield_counter, ignore_list, callback)
     end
 end
 
--- 7. MAIN SCAN
-local function execute_full_scan(config)
-    -- Merge config
-    local current_ignore_list = DEFAULT_CONFIG.ignore_list
-    if config and config.ignore_list then
-        current_ignore_list = config.ignore_list
-    end
-
-    -- A. TREE VIEW
+local function do_tree_scan(current_ignore_list)
     append_log("\n=== 1. HIERARCHY MAP (Tree View) ===")
     local map_services = {
         game:GetService("ReplicatedStorage"),
@@ -401,8 +425,9 @@ local function execute_full_scan(config)
             append_log(generate_tree_map(service, current_ignore_list))
         end
     end
+end
 
-    -- B. DEEP SCAN
+local function do_deep_scan(current_ignore_list)
     append_log("\n=== 2. DEEP SCAN (Code & Remotes) ===")
 
     local deep_scan_services = {
@@ -422,6 +447,21 @@ local function execute_full_scan(config)
             deep_scan_recursive(service, nil, current_ignore_list, process_object)
         end
     end
+end
+
+-- 7. MAIN SCAN
+local function execute_full_scan(config)
+    -- Merge config
+    local current_ignore_list = DEFAULT_CONFIG.ignore_list
+    if config and config.ignore_list then
+        current_ignore_list = config.ignore_list
+    end
+
+    -- A. TREE VIEW
+    do_tree_scan(current_ignore_list)
+
+    -- B. DEEP SCAN
+    do_deep_scan(current_ignore_list)
 
     print("[SCANNER] Complete! File Saved: " .. FILENAME)
     append_log("\n=== END OF SCAN ===")
