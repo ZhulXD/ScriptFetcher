@@ -391,7 +391,7 @@ local function process_object(obj)
     end
 end
 
-local function deep_scan_recursive(root, yield_counter, ignore_list)
+local function deep_scan_recursive(root, yield_counter, ignore_list, callback)
     yield_counter = yield_counter or {count = 0}
 
     local success, children = pcall(root.GetChildren, root)
@@ -404,8 +404,8 @@ local function deep_scan_recursive(root, yield_counter, ignore_list)
                 task.wait()
             end
 
-            process_object(child)
-            deep_scan_recursive(child, yield_counter, ignore_list)
+            callback(child)
+            deep_scan_recursive(child, yield_counter, ignore_list, callback)
         end
     end
 end
@@ -444,7 +444,7 @@ local function do_deep_scan(current_ignore_list)
             print("[SCANNER] Deep Scanning " .. sanitize(service.Name) .. "...")
             append_log("\n--- Service: ", sanitize(service.Name), " ---")
 
-            deep_scan_recursive(service, nil, current_ignore_list)
+            deep_scan_recursive(service, nil, current_ignore_list, process_object)
         end
     end
 end
