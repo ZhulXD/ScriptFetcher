@@ -1,3 +1,42 @@
 === GAME CONTEXT SCAN ===
-Time: Sat Feb 28 04:56:11 2026
+Time: Mon Mar 16 21:26:24 2026
 Place ID: 0
+
+
+=== 1. HIERARCHY MAP (Tree View) ===
+ReplicatedStorage
+├── TestRemote [REMOTE]
+└── TestFolder
+    ├── TestScript [SCRIPT]
+    └── MaliciousScript [SCRIPT]
+Workspace
+
+StarterGui
+
+PlayerGui
+
+
+=== 2. DEEP SCAN (Code & Remotes) ===
+
+--- Service: ReplicatedStorage ---
+[REMOTE DETECTED] ReplicatedStorage.TestRemote
+
+>>> SOURCE: ReplicatedStorage.TestFolder.TestScript
+-- Mock decompiled source for TestScript
+<<< END SOURCE
+
+
+>>> SOURCE: ReplicatedStorage.TestFolder.MaliciousScript
+-- Mock decompiled source for MaliciousScript
+<<< END SOURCE
+
+
+--- Service: Workspace ---
+
+--- Service: StarterGui ---
+
+--- Service: StarterPack ---
+
+--- Service: StarterPlayer ---
+
+=== END OF SCAN ===
