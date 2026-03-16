@@ -136,7 +136,7 @@ function appendfile(filename, content)
 end
 
 function decompile(scriptObj)
-    return "-- Mock decompiled source for " .. scriptObj.Name
+    return scriptObj.Source or "-- Mock decompiled source for " .. scriptObj.Name
 end
 
 -- Task mock
