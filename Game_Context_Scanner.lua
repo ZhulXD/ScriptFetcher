@@ -12,6 +12,13 @@ local CLASS_TAGS = {
     ScreenGui = " [GUI]"
 }
 
+local SOURCE_REPLACEMENTS = {
+    ["<<< END SOURCE"] = "<\\<\\< END SOURCE",
+    [">>> SOURCE"] = ">\\>\\> SOURCE",
+    ["[PROPERTIES]"] = "\\[PROPERTIES\\]",
+    ["[REMOTE DETECTED]"] = "\\[REMOTE DETECTED\\]"
+}
+
 -- Robust initialization for environments with restricted/broken 'game'
 local function initialize_game(current_game)
     if current_game and pcall(function() return current_game:GetService("Players") end) then
@@ -267,26 +274,22 @@ local function get_properties_string(obj)
     local className = obj.ClassName
     local handler = className and CLASS_HANDLER_CACHE[className]
 
-    if handler ~= nil then
-        if handler ~= false then
-            handler(obj, props)
-        end
-    else
-        local found = false
+    if handler == nil then
+        handler = false
         for i = 1, #PROPERTY_HANDLERS do
             local mapping = PROPERTY_HANDLERS[i]
             if obj:IsA(mapping.class) then
-                if className then
-                    CLASS_HANDLER_CACHE[className] = mapping.handler
-                end
-                mapping.handler(obj, props)
-                found = true
+                handler = mapping.handler
                 break
             end
         end
-        if not found and className then
-            CLASS_HANDLER_CACHE[className] = false
+        if className then
+            CLASS_HANDLER_CACHE[className] = handler
         end
+    end
+
+    if handler then
+        handler(obj, props)
     end
 
     if #props > 0 then
@@ -296,17 +299,43 @@ local function get_properties_string(obj)
 end
 
 -- 6. TREE MAP GENERATOR (Optimized with table buffer)
-local function extract_tree_data(root, cachedChildren, yield_counter, ignore_list, visited)
+local extract_tree_data -- Forward declaration for recursion
+
+local function get_safe_children(node)
+    local success, res = pcall(node.GetChildren, node)
+    return success and type(res) == "table" and res or {}
+end
+
+local function get_node_tag(node)
+    return CLASS_TAGS[node.ClassName] or ""
+end
+
+local function parse_tree_node(child, yield_counter, ignore_list, visited)
+    local tag = get_node_tag(child)
+    local grandChildren = get_safe_children(child)
+
+    local childNodes = nil
+    if #grandChildren > 0 then
+        childNodes = extract_tree_data(child, grandChildren, yield_counter, ignore_list, visited)
+    end
+
+    if tag ~= "" or (childNodes and #childNodes > 0) then
+        return {
+            name = sanitize(child.Name),
+            tag = tag,
+            children = childNodes
+        }
+    end
+    return nil
+end
+
+extract_tree_data = function(root, cachedChildren, yield_counter, ignore_list, visited)
     visited = visited or {}
     if visited[root] then return {} end
     visited[root] = true
     yield_counter = yield_counter or {count = 0}
-    local children = cachedChildren
-    if not children then
-        local success, res = pcall(root.GetChildren, root)
-        children = success and type(res) == "table" and res or {}
-    end
 
+    local children = cachedChildren or get_safe_children(root)
     local nodes = {}
 
     for _, child in ipairs(children) do
@@ -317,31 +346,16 @@ local function extract_tree_data(root, cachedChildren, yield_counter, ignore_lis
                 task.wait()
             end
 
-            -- Identify interesting objects
-            local tag = CLASS_TAGS[child.ClassName] or ""
-
-            local success, grandChildren = pcall(child.GetChildren, child)
-            grandChildren = success and type(grandChildren) == "table" and grandChildren or {}
-
-            local childNodes = nil
-            if #grandChildren > 0 then
-                childNodes = extract_tree_data(child, grandChildren, yield_counter, ignore_list, visited)
-            end
-
-            if tag ~= "" or (childNodes and #childNodes > 0) then
+            local nodeData = parse_tree_node(child, yield_counter, ignore_list, visited)
+            if nodeData then
                 local len = #nodes
-                nodes[len + 1] = {
-                    name = sanitize(child.Name),
-                    tag = tag,
-                    children = childNodes
-                }
+                nodes[len + 1] = nodeData
             end
         end
     end
 
     return nodes
 end
-
 local function serialize_tree_data(nodes, indent, buffer, yield_counter)
     yield_counter = yield_counter or {count = 0}
     local vCount = #nodes
@@ -410,10 +424,7 @@ local function process_object(obj)
         -- Decompile
         local source = get_script_source(obj)
         if source then
-            source = string.gsub(source, "<<< END SOURCE", "<\\<\\< END SOURCE")
-            source = string.gsub(source, ">>> SOURCE", ">\\>\\> SOURCE")
-            source = string.gsub(source, "%[PROPERTIES%]", "\\[PROPERTIES\\]")
-            source = string.gsub(source, "%[REMOTE DETECTED%]", "\\[REMOTE DETECTED\\]")
+            source = string.gsub(source, "([<%>%[]+[A-Z %]]+)", SOURCE_REPLACEMENTS)
             append_log(source)
         end
         append_log("<<< END SOURCE\n")
@@ -423,8 +434,8 @@ end
 local function deep_scan_recursive(root, yield_counter, ignore_list, callback)
     yield_counter = yield_counter or {count = 0}
 
-    local success, children = pcall(root.GetChildren, root)
-    children = success and type(children) == "table" and children or {}
+    local children = root:GetChildren()
+    children = type(children) == "table" and children or {}
     for _, child in ipairs(children) do
         if not should_ignore(child, ignore_list) then
             yield_counter.count = yield_counter.count + 1
@@ -527,6 +538,7 @@ if SCANNER_TEST_MODE then
     export.append_log = append_log
     export.GetService = GetService
     export.process_object = process_object
+    export.extract_tree_data = extract_tree_data
     export.deep_scan_recursive = deep_scan_recursive
     export.do_tree_scan = do_tree_scan
 end
