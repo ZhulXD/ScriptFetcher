@@ -104,6 +104,14 @@ local DEFAULT_CONFIG = {
         ["CameraScript"] = true,
         ["ControlScript"] = true,
         ["Animate"] = true
+    },
+    scan_targets = {
+        { name = "ReplicatedStorage", tree = true, deep = true },
+        { name = "Workspace", tree = true, deep = true },
+        { name = "StarterGui", tree = true, deep = true },
+        { name = "PlayerGui", tree = true, deep = true, is_player_child = true },
+        { name = "StarterPack", tree = false, deep = true },
+        { name = "StarterPlayer", tree = false, deep = true }
     }
 }
 
@@ -450,14 +458,35 @@ local function deep_scan_recursive(root, yield_counter, ignore_list, callback)
     end
 end
 
-local function do_tree_scan(current_ignore_list)
+local function get_targets_for_mode(mode, scan_targets)
+    local resolved = {}
+    for _, target in ipairs(scan_targets) do
+        if target[mode] then
+            local obj
+            if target.is_player_child then
+                local player = Players.LocalPlayer
+                if player then
+                    if mode == "tree" then
+                        obj = player:WaitForChild(target.name, 5)
+                    else
+                        obj = player:FindFirstChild(target.name)
+                    end
+                end
+            else
+                obj = GetService(target.name)
+            end
+
+            if obj then
+                resolved[#resolved + 1] = obj
+            end
+        end
+    end
+    return resolved
+end
+
+local function do_tree_scan(current_ignore_list, scan_targets)
     append_log("\n=== 1. HIERARCHY MAP (Tree View) ===")
-    local map_services = {
-        game:GetService("ReplicatedStorage"),
-        game:GetService("Workspace"),
-        game:GetService("StarterGui"),
-        Players.LocalPlayer:WaitForChild("PlayerGui", 5)
-    }
+    local map_services = get_targets_for_mode("tree", scan_targets)
 
     for _, service in ipairs(map_services) do
         if service then
@@ -467,17 +496,9 @@ local function do_tree_scan(current_ignore_list)
     end
 end
 
-local function do_deep_scan(current_ignore_list)
+local function do_deep_scan(current_ignore_list, scan_targets)
     append_log("\n=== 2. DEEP SCAN (Code & Remotes) ===")
-
-    local deep_scan_services = {
-        game:GetService("ReplicatedStorage"),
-        game:GetService("Workspace"),
-        game:GetService("StarterGui"),
-        game:GetService("StarterPack"),
-        game:GetService("StarterPlayer"),
-        Players.LocalPlayer:FindFirstChild("PlayerGui")
-    }
+    local deep_scan_services = get_targets_for_mode("deep", scan_targets)
 
     for _, service in ipairs(deep_scan_services) do
         if service then
@@ -497,11 +518,16 @@ local function execute_full_scan(config)
         current_ignore_list = config.ignore_list
     end
 
+    local scan_targets = DEFAULT_CONFIG.scan_targets
+    if config and config.scan_targets then
+        scan_targets = config.scan_targets
+    end
+
     -- A. TREE VIEW
-    do_tree_scan(current_ignore_list)
+    do_tree_scan(current_ignore_list, scan_targets)
 
     -- B. DEEP SCAN
-    do_deep_scan(current_ignore_list)
+    do_deep_scan(current_ignore_list, scan_targets)
 
     print("[SCANNER] Complete! File Saved: " .. FILENAME)
     append_log("\n=== END OF SCAN ===")
@@ -541,7 +567,7 @@ if SCANNER_TEST_MODE then
     export.extract_tree_data = extract_tree_data
     export.deep_scan_recursive = deep_scan_recursive
     export.do_tree_scan = do_tree_scan
-    export.get_safe_children = get_safe_children
+    export.get_targets_for_mode = get_targets_for_mode
 end
 
 return export
