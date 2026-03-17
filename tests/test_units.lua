@@ -468,6 +468,45 @@ else
     failed = failed + 1
 end
 
+
+-- Test deep_scan_recursive yielding logic
+if scanner.deep_scan_recursive then
+    print("Testing deep_scan_recursive yielding logic...")
+
+    -- Mock task.wait to count yields
+    local wait_call_count = 0
+    local original_task_wait = task.wait
+    task.wait = function()
+        wait_call_count = wait_call_count + 1
+    end
+
+    -- Create a deep tree structure
+    -- 250 objects total to trigger yield at least twice
+    local root = mock.create_instance("Folder", "RootFolder")
+    for i = 1, 250 do
+        mock.create_instance("Part", "Part_" .. tostring(i), root)
+    end
+
+    local yield_counter = {count = 0}
+    local ignore_list = {}
+    local processed_count = 0
+    local function dummy_callback(obj)
+        processed_count = processed_count + 1
+    end
+
+    scanner.deep_scan_recursive(root, yield_counter, ignore_list, dummy_callback)
+
+    assert_equal(2, wait_call_count, "task.wait call count for 250 objects")
+    assert_equal(50, yield_counter.count, "yield_counter remaining count after 250 objects (250 % 100)")
+    assert_equal(250, processed_count, "processed count should match number of objects")
+
+    -- Restore task.wait
+    task.wait = original_task_wait
+else
+    print("FAIL: deep_scan_recursive function not exported")
+    failed = failed + 1
+end
+
 print("\nTest Summary: " .. passed .. " passed, " .. failed .. " failed.")
 
 if failed > 0 then
