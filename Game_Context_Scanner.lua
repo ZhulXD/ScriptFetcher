@@ -61,9 +61,9 @@ if not decompile and debug and debug.decompile then
     decompile = debug.decompile
 end
 
-local FILENAME = "Game_Context_" .. tostring(game.PlaceId):gsub("[^%w]", "") .. ".txt"
+local FILENAME = "Game_Context_" .. tostring(game and game.PlaceId or "0"):gsub("[^%w]", "") .. ".txt"
 local success, err = pcall(function()
-    writefile(FILENAME, "=== GAME CONTEXT SCAN ===\nTime: " .. tostring(os.date()) .. "\nPlace ID: " .. game.PlaceId .. "\n\n")
+    writefile(FILENAME, "=== GAME CONTEXT SCAN ===\nTime: " .. tostring(os.date()) .. "\nPlace ID: " .. tostring(game and game.PlaceId or "0") .. "\n\n")
 end)
 if not success then
     warn("[SCANNER] Failed to create log file: " .. tostring(err))
@@ -203,7 +203,8 @@ local function handle_basepart(obj, props)
     local shouldLog = name == "Handle" or transparency > 0.9
 
     if not shouldLog then
-        shouldLog = name:find("[Hh][Ii][Tt][Bb][Oo][Xx]") or name:find("[Rr][Oo][Oo][Tt]")
+        local lowerName = name:lower()
+        shouldLog = lowerName:find("hitbox", 1, true) or lowerName:find("root", 1, true)
     end
 
     if shouldLog then
