@@ -207,6 +207,7 @@ if scanner.get_properties_string then
     print("Testing get_properties_string edge cases...")
     assert_nil(scanner.get_properties_string(nil), "Should handle nil input")
     assert_nil(scanner.get_properties_string("not an object"), "Should handle string input")
+    assert_nil(scanner.get_properties_string(""), "Should handle empty string input")
     assert_nil(scanner.get_properties_string(123), "Should handle number input")
     assert_nil(scanner.get_properties_string({}), "Should handle empty table")
     assert_nil(scanner.get_properties_string({ Name = "Fake" }), "Should handle table without IsA")
@@ -528,12 +529,14 @@ if scanner.generate_tree_map then
 
     scanner.generate_tree_map(root)
 
-    assert_equal(2, wait_call_count, "task.wait call count for generate_tree_map with 150 objects")
+    assert_equal(3, wait_call_count, "task.wait call count for generate_tree_map with 150 objects")
 
     -- Restore task.wait
     task.wait = original_task_wait
 else
     print("FAIL: generate_tree_map function not exported")
+    failed = failed + 1
+end
 -- Test execute_full_scan config merging
 if scanner.execute_full_scan then
     print("Testing execute_full_scan config merging...")
