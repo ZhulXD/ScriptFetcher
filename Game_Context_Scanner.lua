@@ -4,6 +4,14 @@ local cloneref = cloneref
 
 local SCANNER_TEST_MODE = ... == true
 
+local CLASS_TAGS = {
+    RemoteEvent = " [REMOTE]",
+    RemoteFunction = " [REMOTE]",
+    LocalScript = " [SCRIPT]",
+    ModuleScript = " [SCRIPT]",
+    ScreenGui = " [GUI]"
+}
+
 -- Robust initialization for environments with restricted/broken 'game'
 local function initialize_game(current_game)
     if current_game and pcall(function() return current_game:GetService("Players") end) then
@@ -219,7 +227,8 @@ end
 local function handle_text(obj, props)
     add_prop(props, "Text", '"' .. sanitize(obj.Text) .. '"')
     add_prop(props, "Visible", obj.Visible)
-    if obj:IsA("TextButton") or obj:IsA("TextBox") then
+    local className = obj.ClassName
+    if className == "TextButton" or className == "TextBox" then
         add_prop(props, "Active", obj.Active)
     end
 end
@@ -228,7 +237,7 @@ end
 local function handle_image(obj, props)
     add_prop(props, "Image", sanitize(obj.Image))
     add_prop(props, "Visible", obj.Visible)
-    if obj:IsA("ImageButton") then
+    if obj.ClassName == "ImageButton" then
         add_prop(props, "Active", obj.Active)
     end
 end
@@ -308,11 +317,7 @@ local function extract_tree_data(root, cachedChildren, yield_counter, ignore_lis
             end
 
             -- Identify interesting objects
-            local tag = ""
-            if child:IsA("RemoteEvent") or child:IsA("RemoteFunction") then tag = " [REMOTE]"
-            elseif child:IsA("LocalScript") or child:IsA("ModuleScript") then tag = " [SCRIPT]"
-            elseif child:IsA("ScreenGui") then tag = " [GUI]"
-            end
+            local tag = CLASS_TAGS[child.ClassName] or ""
 
             local success, grandChildren = pcall(child.GetChildren, child)
             grandChildren = success and type(grandChildren) == "table" and grandChildren or {}
@@ -384,12 +389,13 @@ local function process_object(obj)
     end
 
     -- Log Remote
-    if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+    local className = obj.ClassName
+    if className == "RemoteEvent" or className == "RemoteFunction" then
         append_log("[REMOTE DETECTED] ", sanitized_name)
     end
 
     -- Dump Script
-    if obj:IsA("LocalScript") or obj:IsA("ModuleScript") then
+    if className == "LocalScript" or className == "ModuleScript" then
         append_log("\n>>> SOURCE: ", sanitized_name)
 
         -- Decompile
