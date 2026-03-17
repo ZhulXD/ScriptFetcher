@@ -558,6 +558,17 @@ else
     failed = failed + 1
 end
 
+
+
+
+
+
+
+
+
+
+
+
 -- Test do_tree_scan with empty services
 if scanner.do_tree_scan then
     print("Testing do_tree_scan with empty services...")
@@ -588,6 +599,9 @@ else
 end
 
 -- Test execute_full_scan config merging
+
+
+
 
 if scanner.execute_full_scan then
     print("Testing execute_full_scan config merging...")
@@ -717,6 +731,37 @@ if scanner.initialize_game then
     end
 else
     print("FAIL: initialize_game function not exported")
+    failed = failed + 1
+end
+
+-- Test extract_tree_data refactoring
+if scanner.extract_tree_data then
+    print("Testing extract_tree_data...")
+
+    local root = mock.create_instance("Folder", "RootFolder")
+    local remote = mock.create_instance("RemoteEvent", "MyRemote", root)
+    local localScript = mock.create_instance("LocalScript", "MyScript", root)
+    local uninteresting = mock.create_instance("Part", "Uninteresting", root)
+
+    local yield_counter = {count = 0}
+    local nodes = scanner.extract_tree_data(root, nil, yield_counter, {})
+
+    assert_equal(2, #nodes, "extract_tree_data should return 2 nodes (interesting ones)")
+
+    local foundRemote = false
+    local foundScript = false
+    for _, node in ipairs(nodes) do
+        if node.name == "MyRemote" and node.tag == " [REMOTE]" then
+            foundRemote = true
+        elseif node.name == "MyScript" and node.tag == " [SCRIPT]" then
+            foundScript = true
+        end
+    end
+
+    assert_equal(true, foundRemote, "extract_tree_data should include RemoteEvent")
+    assert_equal(true, foundScript, "extract_tree_data should include LocalScript")
+else
+    print("FAIL: extract_tree_data function not exported")
     failed = failed + 1
 end
 
