@@ -328,7 +328,7 @@ local function parse_tree_node(child, yield_counter, ignore_list, visited)
     local tag = get_node_tag(child)
     local grandChildren = get_safe_children(child)
 
-    local childNodes = nil
+    local childNodes
     if #grandChildren > 0 then
         childNodes = extract_tree_data(child, grandChildren, yield_counter, ignore_list, visited)
     end
