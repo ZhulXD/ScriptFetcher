@@ -252,19 +252,38 @@ local PROPERTY_HANDLERS = {
     { class = "ImageLabel", handler = handle_image }
 }
 
+local CLASS_HANDLER_CACHE = {}
 local function get_properties_string(obj)
     if not obj or (type(obj) ~= "table" and type(obj) ~= "userdata") or type(obj.IsA) ~= "function" then return end
     local props = {}
 
-    for i = 1, #PROPERTY_HANDLERS do
-        local mapping = PROPERTY_HANDLERS[i]
-        if obj:IsA(mapping.class) then
-            mapping.handler(obj, props)
-            break
+    local className = obj.ClassName
+    local handler = className and CLASS_HANDLER_CACHE[className]
+
+    if handler ~= nil then
+        if handler ~= false then
+            handler(obj, props)
+        end
+    else
+        local found = false
+        for i = 1, #PROPERTY_HANDLERS do
+            local mapping = PROPERTY_HANDLERS[i]
+            if obj:IsA(mapping.class) then
+                if className then
+                    CLASS_HANDLER_CACHE[className] = mapping.handler
+                end
+                mapping.handler(obj, props)
+                found = true
+                break
+            end
+        end
+        if not found and className then
+            CLASS_HANDLER_CACHE[className] = false
         end
     end
 
     if #props > 0 then
+
         return table.concat(props, ", ")
     end
 end
@@ -385,6 +404,8 @@ local function process_object(obj)
         if source then
             source = string.gsub(source, "<<< END SOURCE", "<\\<\\< END SOURCE")
             source = string.gsub(source, ">>> SOURCE", ">\\>\\> SOURCE")
+            source = string.gsub(source, "%[PROPERTIES%]", "\\[PROPERTIES\\]")
+            source = string.gsub(source, "%[REMOTE DETECTED%]", "\\[REMOTE DETECTED\\]")
             append_log(source)
         end
         append_log("<<< END SOURCE\n")
