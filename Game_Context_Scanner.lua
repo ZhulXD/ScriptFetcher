@@ -417,22 +417,25 @@ local function generate_tree_map(root, ignore_list)
 end
 
 local function process_object(obj)
-    local sanitized_name = sanitize(obj:GetFullName())
+    local sanitized_name
 
     -- Dump Properties
     local props = get_properties_string(obj)
     if props then
+        sanitized_name = sanitized_name or sanitize(obj:GetFullName())
         append_log("[PROPERTIES] ", sanitized_name, " | ", props)
     end
 
     -- Log Remote
     local className = obj.ClassName
     if className == "RemoteEvent" or className == "RemoteFunction" then
+        sanitized_name = sanitized_name or sanitize(obj:GetFullName())
         append_log("[REMOTE DETECTED] ", sanitized_name)
     end
 
     -- Dump Script
     if className == "LocalScript" or className == "ModuleScript" then
+        sanitized_name = sanitized_name or sanitize(obj:GetFullName())
         append_log("\n>>> SOURCE: ", sanitized_name)
 
         -- Decompile
@@ -547,11 +550,11 @@ local function execute_full_scan(config)
     append_log("\n=== END OF SCAN ===")
     flush_log() -- Final flush to ensure everything is written
 
-    game:GetService("StarterGui"):SetCore("SendNotification", {
+    if game then game:GetService("StarterGui"):SetCore("SendNotification", {
         Title = "Scan Complete!",
         Text = "Saved to " .. FILENAME,
         Duration = 5
-    })
+    }) end
 end
 
 if not SCANNER_TEST_MODE then
