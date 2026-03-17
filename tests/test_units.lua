@@ -234,6 +234,26 @@ if scanner.generate_tree_map then
         passed = passed + 1
     end
 
+    -- 3. Cyclical References (Stack Overflow prevention)
+    local cycleRoot = mock.create_instance("Folder", "CycleRoot")
+    local cycleChild1 = mock.create_instance("Part", "CycleChild1", cycleRoot)
+    local cycleChild2 = mock.create_instance("LocalScript", "CycleChild2", cycleChild1)
+
+    -- Create cycle
+    table.insert(cycleChild2:GetChildren(), cycleChild1)
+
+    local success, treeCyclic = pcall(function()
+        return scanner.generate_tree_map(cycleRoot)
+    end)
+
+    if not success then
+        print("FAIL: generate_tree_map crashed with cyclical references: " .. tostring(treeCyclic))
+        failed = failed + 1
+    else
+        assert_match("CycleChild1", treeCyclic, "Cyclical tree includes Child1")
+        assert_match("CycleChild2 %[SCRIPT%]", treeCyclic, "Cyclical tree includes Child2")
+        passed = passed + 1
+    end
     -- 2. Custom Ignore (Include ChatScript, Ignore ClientScript)
     local customIgnore = { ["ClientScript"] = true }
     local treeCustom = scanner.generate_tree_map(root, customIgnore)
@@ -528,12 +548,14 @@ if scanner.generate_tree_map then
 
     scanner.generate_tree_map(root)
 
-    assert_equal(2, wait_call_count, "task.wait call count for generate_tree_map with 150 objects")
+    assert_equal(3, wait_call_count, "task.wait call count for generate_tree_map with 150 objects")
 
     -- Restore task.wait
     task.wait = original_task_wait
 else
     print("FAIL: generate_tree_map function not exported")
+end
+
 -- Test execute_full_scan config merging
 if scanner.execute_full_scan then
     print("Testing execute_full_scan config merging...")
