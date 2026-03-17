@@ -13,10 +13,16 @@ local CLASS_TAGS = {
 }
 
 local SOURCE_REPLACEMENTS = {
-    ["<<< END SOURCE"] = "<\\<\\< END SOURCE",
-    [">>> SOURCE"] = ">\\>\\> SOURCE",
-    ["[PROPERTIES]"] = "\\[PROPERTIES\\]",
-    ["[REMOTE DETECTED]"] = "\\[REMOTE DETECTED\\]"
+    ["<<< END SOURCE"] = "\\<\\<\\< END SOURCE",
+    [">>> SOURCE: "] = "\\>\\>\\> SOURCE: ",
+    ["[PROPERTIES] "] = "\\[PROPERTIES\\] ",
+    ["[REMOTE DETECTED] "] = "\\[REMOTE DETECTED\\] ",
+    ["=== GAME CONTEXT SCAN ==="] = "\\=\\=\\= GAME CONTEXT SCAN \\=\\=\\=",
+    ["=== 1. HIERARCHY MAP (Tree View) ==="] = "\\=\\=\\= 1. HIERARCHY MAP (Tree View) \\=\\=\\=",
+    ["=== 2. DEEP SCAN (Code & Remotes) ==="] = "\\=\\=\\= 2. DEEP SCAN (Code & Remotes) \\=\\=\\=",
+    ["--- Service: "] = "\\-\\-\\- Service: ",
+    ["---"] = "\\-\\-\\-",
+    ["=== END OF SCAN ==="] = "\\=\\=\\= END OF SCAN \\=\\=\\="
 }
 
 -- Robust initialization for environments with restricted/broken 'game'
@@ -430,7 +436,16 @@ local function process_object(obj)
         -- Decompile
         local source = get_script_source(obj)
         if source then
-            source = string.gsub(source, "([<%>%[]+[A-Z %]]+)", SOURCE_REPLACEMENTS)
+            source = string.gsub(source, "([%[<%-%=]+[%w%s%-%=%.%[%]%(%):%]]+)", function(m)
+                local rep = SOURCE_REPLACEMENTS[m]
+                if rep then return rep end
+                -- Escape if it looks like a potential marker spoof (starts with trigger and contains letters/dashes)
+                -- Refined for brackets: Must start with [ and contain uppercase letters like [PROPERTIES]
+                if m:find("^<<<") or m:find("^>>>") or m:find("^===") or m:find("^%-%-%-") or (m:find("^%[") and m:find("%u")) then
+                    return (m:gsub("[<%>%[\\%-%=]", "\\%0"))
+                end
+                return m
+            end)
             append_log(source)
         end
         append_log("<<< END SOURCE\n")
