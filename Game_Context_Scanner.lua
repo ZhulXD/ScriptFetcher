@@ -298,45 +298,38 @@ local function extract_tree_data(root, cachedChildren, yield_counter, ignore_lis
     end
 
     local nodes = {}
-    local visibleChildren = {}
-    local vCount = 0
 
     for _, child in ipairs(children) do
         if not should_ignore(child, ignore_list) then
-            vCount = vCount + 1
-            visibleChildren[vCount] = child
-        end
-    end
+            yield_counter.count = yield_counter.count + 1
+            if yield_counter.count >= 100 then
+                yield_counter.count = 0
+                task.wait()
+            end
 
-    for i, child in ipairs(visibleChildren) do
-        yield_counter.count = yield_counter.count + 1
-        if yield_counter.count >= 100 then
-            yield_counter.count = 0
-            task.wait()
-        end
+            -- Identify interesting objects
+            local tag = ""
+            if child:IsA("RemoteEvent") or child:IsA("RemoteFunction") then tag = " [REMOTE]"
+            elseif child:IsA("LocalScript") or child:IsA("ModuleScript") then tag = " [SCRIPT]"
+            elseif child:IsA("ScreenGui") then tag = " [GUI]"
+            end
 
-        -- Identify interesting objects
-        local tag = ""
-        if child:IsA("RemoteEvent") or child:IsA("RemoteFunction") then tag = " [REMOTE]"
-        elseif child:IsA("LocalScript") or child:IsA("ModuleScript") then tag = " [SCRIPT]"
-        elseif child:IsA("ScreenGui") then tag = " [GUI]"
-        end
+            local success, grandChildren = pcall(child.GetChildren, child)
+            grandChildren = success and type(grandChildren) == "table" and grandChildren or {}
 
-        local success, grandChildren = pcall(child.GetChildren, child)
-        grandChildren = success and type(grandChildren) == "table" and grandChildren or {}
+            local childNodes = nil
+            if #grandChildren > 0 then
+                childNodes = extract_tree_data(child, grandChildren, yield_counter, ignore_list)
+            end
 
-        local childNodes = nil
-        if #grandChildren > 0 then
-            childNodes = extract_tree_data(child, grandChildren, yield_counter, ignore_list)
-        end
-
-        if tag ~= "" or (childNodes and #childNodes > 0) then
-            local len = #nodes
-            nodes[len + 1] = {
-                name = sanitize(child.Name),
-                tag = tag,
-                children = childNodes
-            }
+            if tag ~= "" or (childNodes and #childNodes > 0) then
+                local len = #nodes
+                nodes[len + 1] = {
+                    name = sanitize(child.Name),
+                    tag = tag,
+                    children = childNodes
+                }
+            end
         end
     end
 
