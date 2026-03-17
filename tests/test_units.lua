@@ -296,6 +296,27 @@ if scanner.GetService then
     local starterGui = scanner.GetService("StarterGui")
     assert_equal("StarterGui", starterGui and starterGui.Name, "Fallback to direct indexing")
 
+    -- 4. Test missing game global
+    local original_game = _G.game
+    _G.game = nil
+    game = nil
+    local temp_scanner = helper.load_scanner()
+
+    local ok, err = pcall(function()
+        local missing_game_service = temp_scanner.GetService("Workspace")
+        assert_nil(missing_game_service, "GetService should return nil if game is missing")
+    end)
+
+    -- Restore game
+    _G.game = original_game
+    game = original_game
+
+    if not ok then
+        print("FAIL: GetService missing game test threw error: " .. tostring(err))
+        failed = failed + 1
+    end
+
+
     -- Restore mocks
     game.GetService = original_getservice
     game.FindFirstChild = original_findfirstchild
