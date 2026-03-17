@@ -27,10 +27,6 @@ class LuaTestRunner(unittest.TestCase):
         lua = LuaRuntime()
 
         def dofile(filename):
-            # Resolve path relative to CWD
-            if not os.path.exists(filename):
-                raise FileNotFoundError(f"Error: File not found: {filename}")
-
             with open(filename, 'r') as f:
                 code = f.read()
 
