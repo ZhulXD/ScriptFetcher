@@ -534,6 +534,57 @@ if scanner.generate_tree_map then
     task.wait = original_task_wait
 else
     print("FAIL: generate_tree_map function not exported")
+-- Test execute_full_scan config merging
+if scanner.execute_full_scan then
+    print("Testing execute_full_scan config merging...")
+
+    local original_appendfile = appendfile
+    local scan_output = ""
+
+    _G.appendfile = function(filename, content)
+        scan_output = scan_output .. content
+    end
+    appendfile = _G.appendfile
+
+    -- Setup: Add a default-ignored object to a scanned service
+    local rs = game:GetService("ReplicatedStorage")
+    local ignoredScript = mock.create_instance("LocalScript", "ChatScript", rs)
+
+    -- 1. Test nil config (should use default ignore list)
+    scan_output = ""
+    scanner.execute_full_scan(nil)
+    if string.find(scan_output, "ChatScript") then
+        print("FAIL: execute_full_scan(nil) did not use default ignore list")
+        failed = failed + 1
+    else
+        passed = passed + 1
+    end
+
+    -- 2. Test empty config (should use default ignore list)
+    scan_output = ""
+    scanner.execute_full_scan({})
+    if string.find(scan_output, "ChatScript") then
+        print("FAIL: execute_full_scan({}) did not use default ignore list")
+        failed = failed + 1
+    else
+        passed = passed + 1
+    end
+
+    -- 3. Test custom ignore list (empty - should NOT ignore ChatScript)
+    scan_output = ""
+    scanner.execute_full_scan({ ignore_list = {} })
+    if not string.find(scan_output, "ChatScript") then
+        print("FAIL: execute_full_scan with empty ignore_list still ignored ChatScript")
+        failed = failed + 1
+    else
+        passed = passed + 1
+    end
+
+    -- Cleanup
+    _G.appendfile = original_appendfile
+    appendfile = original_appendfile
+else
+    print("FAIL: execute_full_scan function not exported")
     failed = failed + 1
 end
 
