@@ -340,9 +340,16 @@ local function extract_tree_data(root, cachedChildren, yield_counter, ignore_lis
     return nodes
 end
 
-local function serialize_tree_data(nodes, indent, buffer)
+local function serialize_tree_data(nodes, indent, buffer, yield_counter)
+    yield_counter = yield_counter or {count = 0}
     local vCount = #nodes
     for i, node in ipairs(nodes) do
+        yield_counter.count = yield_counter.count + 1
+        if yield_counter.count >= 100 then
+            yield_counter.count = 0
+            task.wait()
+        end
+
         local isLast = (i == vCount)
         local prefix = isLast and "└── " or "├── "
         local subIndent = isLast and "    " or "│   "
@@ -366,15 +373,16 @@ local function serialize_tree_data(nodes, indent, buffer)
         end
 
         if node.children and #node.children > 0 then
-            serialize_tree_data(node.children, indent .. subIndent, buffer)
+            serialize_tree_data(node.children, indent .. subIndent, buffer, yield_counter)
         end
     end
 end
 
 local function generate_tree_map(root, ignore_list)
     local buffer = {}
-    local nodes = extract_tree_data(root, nil, nil, ignore_list)
-    serialize_tree_data(nodes, "", buffer)
+    local yield_counter = {count = 0}
+    local nodes = extract_tree_data(root, nil, yield_counter, ignore_list)
+    serialize_tree_data(nodes, "", buffer, yield_counter)
     return table.concat(buffer)
 end
 

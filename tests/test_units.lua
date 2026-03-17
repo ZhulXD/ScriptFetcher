@@ -507,6 +507,33 @@ else
     failed = failed + 1
 end
 
+-- Test generate_tree_map yielding logic
+if scanner.generate_tree_map then
+    print("Testing generate_tree_map yielding logic...")
+
+    local wait_call_count = 0
+    local original_task_wait = task.wait
+    task.wait = function()
+        wait_call_count = wait_call_count + 1
+    end
+
+    -- Create a folder with 150 interesting children
+    -- 150 children will be processed by extract_tree_data (yielding once)
+    -- and then 150 children will be processed by serialize_tree_data (yielding once)
+    -- Total expected yields: 2
+    local root = mock.create_instance("Folder", "RootFolder")
+    for i = 1, 150 do
+        mock.create_instance("RemoteEvent", "Remote_" .. i, root)
+    end
+
+    scanner.generate_tree_map(root)
+
+    assert_equal(2, wait_call_count, "task.wait call count for generate_tree_map with 150 objects")
+
+    -- Restore task.wait
+    task.wait = original_task_wait
+else
+    print("FAIL: generate_tree_map function not exported")
 -- Test execute_full_scan config merging
 if scanner.execute_full_scan then
     print("Testing execute_full_scan config merging...")
