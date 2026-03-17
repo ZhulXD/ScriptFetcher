@@ -315,6 +315,14 @@ end
 -- 6. TREE MAP GENERATOR (Optimized with table buffer)
 local extract_tree_data -- Forward declaration for recursion
 
+local function increment_yield_counter(yield_counter)
+    yield_counter.count = yield_counter.count + 1
+    if yield_counter.count >= 100 then
+        yield_counter.count = 0
+        task.wait()
+    end
+end
+
 local function get_safe_children(node)
     local success, res = pcall(node.GetChildren, node)
     return success and type(res) == "table" and res or {}
@@ -354,11 +362,7 @@ extract_tree_data = function(root, cachedChildren, yield_counter, ignore_list, v
 
     for _, child in ipairs(children) do
         if not should_ignore(child, ignore_list) then
-            yield_counter.count = yield_counter.count + 1
-            if yield_counter.count >= 100 then
-                yield_counter.count = 0
-                task.wait()
-            end
+            increment_yield_counter(yield_counter)
 
             local nodeData = parse_tree_node(child, yield_counter, ignore_list, visited)
             if nodeData then
@@ -374,11 +378,7 @@ local function serialize_tree_data(nodes, indent, buffer, yield_counter)
     yield_counter = yield_counter or {count = 0}
     local vCount = #nodes
     for i, node in ipairs(nodes) do
-        yield_counter.count = yield_counter.count + 1
-        if yield_counter.count >= 100 then
-            yield_counter.count = 0
-            task.wait()
-        end
+        increment_yield_counter(yield_counter)
 
         local isLast = (i == vCount)
         local prefix = isLast and "└── " or "├── "
@@ -464,11 +464,7 @@ local function deep_scan_recursive(root, yield_counter, ignore_list, callback)
     children = type(children) == "table" and children or {}
     for _, child in ipairs(children) do
         if not should_ignore(child, ignore_list) then
-            yield_counter.count = yield_counter.count + 1
-            if yield_counter.count >= 100 then
-                yield_counter.count = 0
-                task.wait()
-            end
+            increment_yield_counter(yield_counter)
 
             callback(child)
             deep_scan_recursive(child, yield_counter, ignore_list, callback)
