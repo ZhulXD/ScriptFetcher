@@ -768,6 +768,69 @@ else
     failed = failed + 1
 end
 
+-- Test get_targets_for_mode
+if scanner.get_targets_for_mode then
+    print("Testing get_targets_for_mode...")
+    local customTargets = {
+        { name = "ReplicatedStorage", tree = true, deep = true },
+        { name = "PlayerGui", tree = true, deep = true, is_player_child = true },
+        { name = "StarterPack", tree = false, deep = true }
+    }
+
+    -- 1. Tree mode
+    local treeTargets = scanner.get_targets_for_mode("tree", customTargets)
+    assert_equal(2, #treeTargets, "Tree mode should return 2 targets")
+    assert_equal("ReplicatedStorage", treeTargets[1].Name, "Tree target 1 check")
+    assert_equal("PlayerGui", treeTargets[2].Name, "Tree target 2 check")
+
+    -- 2. Deep mode
+    local deepTargets = scanner.get_targets_for_mode("deep", customTargets)
+    assert_equal(3, #deepTargets, "Deep mode should return 3 targets")
+    assert_equal("ReplicatedStorage", deepTargets[1].Name, "Deep target 1 check")
+    assert_equal("PlayerGui", deepTargets[2].Name, "Deep target 2 check")
+    assert_equal("StarterPack", deepTargets[3].Name, "Deep target 3 check")
+else
+    print("FAIL: get_targets_for_mode function not exported")
+    failed = failed + 1
+end
+
+-- Test execute_full_scan with custom scan_targets
+if scanner.execute_full_scan then
+    print("Testing execute_full_scan with custom scan_targets...")
+    local original_appendfile = appendfile
+    local scan_output = ""
+    appendfile = function(filename, content) scan_output = scan_output .. content end
+
+    local customConfig = {
+        scan_targets = {
+            { name = "Workspace", tree = true, deep = false }
+        }
+    }
+
+    scanner.execute_full_scan(customConfig)
+    scanner.flush_log()
+
+    assert_match("=== 1. HIERARCHY MAP", scan_output, "Should have tree scan section")
+    assert_match("Workspace", scan_output, "Should have Workspace in output")
+
+    -- Reset for deep scan check
+    scan_output = ""
+    scanner.execute_full_scan(customConfig)
+    scanner.flush_log()
+
+    if string.match(scan_output, "%-%-%- Service: Workspace %-%-%-") then
+        print("FAIL: Workspace was deep scanned but deep was set to false")
+        failed = failed + 1
+    else
+        passed = passed + 1
+    end
+
+    appendfile = original_appendfile
+else
+    print("FAIL: execute_full_scan function not exported")
+    failed = failed + 1
+end
+
 print("\nTest Summary: " .. passed .. " passed, " .. failed .. " failed.")
 
 if failed > 0 then
