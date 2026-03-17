@@ -277,7 +277,6 @@ local PROPERTY_HANDLERS = {
 local CLASS_HANDLER_CACHE = {}
 local function get_properties_string(obj)
     if not obj or (type(obj) ~= "table" and type(obj) ~= "userdata") or type(obj.IsA) ~= "function" then return end
-    local props = {}
 
     local className = obj.ClassName
     local handler = className and CLASS_HANDLER_CACHE[className]
@@ -297,12 +296,11 @@ local function get_properties_string(obj)
     end
 
     if handler then
+        local props = {}
         handler(obj, props)
-    end
-
-    if #props > 0 then
-
-        return table.concat(props, ", ")
+        if #props > 0 then
+            return table.concat(props, ", ")
+        end
     end
 end
 
