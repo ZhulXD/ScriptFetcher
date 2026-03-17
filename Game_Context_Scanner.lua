@@ -12,6 +12,13 @@ local CLASS_TAGS = {
     ScreenGui = " [GUI]"
 }
 
+local SOURCE_REPLACEMENTS = {
+    ["<<< END SOURCE"] = "<\\<\\< END SOURCE",
+    [">>> SOURCE"] = ">\\>\\> SOURCE",
+    ["[PROPERTIES]"] = "\\[PROPERTIES\\]",
+    ["[REMOTE DETECTED]"] = "\\[REMOTE DETECTED\\]"
+}
+
 -- Robust initialization for environments with restricted/broken 'game'
 local function initialize_game(current_game)
     if current_game and pcall(function() return current_game:GetService("Players") end) then
@@ -411,10 +418,7 @@ local function process_object(obj)
         -- Decompile
         local source = get_script_source(obj)
         if source then
-            source = string.gsub(source, "<<< END SOURCE", "<\\<\\< END SOURCE")
-            source = string.gsub(source, ">>> SOURCE", ">\\>\\> SOURCE")
-            source = string.gsub(source, "%[PROPERTIES%]", "\\[PROPERTIES\\]")
-            source = string.gsub(source, "%[REMOTE DETECTED%]", "\\[REMOTE DETECTED\\]")
+            source = string.gsub(source, "([<%>%[]+[A-Z %]]+)", SOURCE_REPLACEMENTS)
             append_log(source)
         end
         append_log("<<< END SOURCE\n")
