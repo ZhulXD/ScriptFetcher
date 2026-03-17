@@ -831,6 +831,35 @@ else
     failed = failed + 1
 end
 
+
+-- Test writefile failure during initialization
+print("Testing writefile failure during initialization...")
+local original_writefile = writefile
+local original_warn = warn
+local captured_warn = nil
+
+writefile = function()
+    error("Mock writefile failure")
+end
+
+warn = function(...)
+    local args = {...}
+    captured_warn = table.concat(args, " ")
+end
+
+local success, err = pcall(function()
+    helper.load_scanner()
+end)
+
+writefile = original_writefile
+warn = original_warn
+
+if not success then
+    print("FAIL: load_scanner failed with error: " .. tostring(err))
+    failed = failed + 1
+end
+
+assert_match("%[SCANNER%] Failed to create log file:.*Mock writefile failure", captured_warn, "Should log writefile failure")
 print("\nTest Summary: " .. passed .. " passed, " .. failed .. " failed.")
 
 if failed > 0 then
