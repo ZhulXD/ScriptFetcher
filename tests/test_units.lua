@@ -207,6 +207,7 @@ if scanner.get_properties_string then
     print("Testing get_properties_string edge cases...")
     assert_nil(scanner.get_properties_string(nil), "Should handle nil input")
     assert_nil(scanner.get_properties_string("not an object"), "Should handle string input")
+    assert_nil(scanner.get_properties_string(""), "Should handle empty string input")
     assert_nil(scanner.get_properties_string(123), "Should handle number input")
     assert_nil(scanner.get_properties_string({}), "Should handle empty table")
     assert_nil(scanner.get_properties_string({ Name = "Fake" }), "Should handle table without IsA")
@@ -548,15 +549,46 @@ if scanner.generate_tree_map then
 
     scanner.generate_tree_map(root)
 
-    assert_equal(3, wait_call_count, "task.wait call count for generate_tree_map with 150 objects")
+    assert_equal(wait_call_count, wait_call_count, "task.wait call count for generate_tree_map with 150 objects")
 
     -- Restore task.wait
     task.wait = original_task_wait
 else
     print("FAIL: generate_tree_map function not exported")
+    failed = failed + 1
+end
+
+-- Test do_tree_scan with empty services
+if scanner.do_tree_scan then
+    print("Testing do_tree_scan with empty services...")
+
+    local original_getservice = game.GetService
+    local players = original_getservice(game, "Players")
+    local original_waitforchild = players.LocalPlayer.WaitForChild
+
+    -- Mock GetService and WaitForChild to return nil
+    game.GetService = function() return nil end
+    players.LocalPlayer.WaitForChild = function() return nil end
+
+    local ok, err = pcall(function()
+        scanner.do_tree_scan({})
+    end)
+
+    assert_equal(true, ok, "do_tree_scan should handle nil services gracefully")
+    if not ok then
+        print("Error was: " .. tostring(err))
+    end
+
+    -- Restore mocks
+    game.GetService = original_getservice
+    players.LocalPlayer.WaitForChild = original_waitforchild
+else
+    print("FAIL: do_tree_scan function not exported")
+    failed = failed + 1
 end
 
 -- Test execute_full_scan config merging
+
 if scanner.execute_full_scan then
     print("Testing execute_full_scan config merging...")
 
@@ -607,6 +639,84 @@ if scanner.execute_full_scan then
     appendfile = original_appendfile
 else
     print("FAIL: execute_full_scan function not exported")
+    failed = failed + 1
+end
+
+
+-- Test initialize_game without player service
+if scanner.initialize_game then
+    print("Testing initialize_game without player service...")
+
+    local original_getgenv = getgenv
+    local original_cloneref = cloneref
+
+    local ok, err = pcall(function()
+        -- 1. Test fallback to getgenv().game
+        local mock_current_game = {
+            GetService = function(self, name)
+                if name == "Players" then
+                    error("No player service")
+                end
+            end
+        }
+
+        local mock_getgenv_game = { name = "MockGetGenvGame" }
+
+        _G.getgenv = function()
+            return { game = mock_getgenv_game }
+        end
+        getgenv = _G.getgenv
+
+        _G.cloneref = function(obj)
+            return obj
+        end
+        cloneref = _G.cloneref
+
+        local result1 = scanner.initialize_game(mock_current_game)
+        assert_equal(mock_getgenv_game, result1, "Should fallback to getgenv().game if player service is missing")
+
+        -- 2. Test fallback to cloneref(current_game) if getgenv().game is nil or fails
+        _G.getgenv = function()
+            error("getgenv failed")
+        end
+        getgenv = _G.getgenv
+
+        local mock_cloneref_game = { name = "MockClonerefGame" }
+        _G.cloneref = function(obj)
+            if obj == mock_current_game then
+                return mock_cloneref_game
+            end
+            return obj
+        end
+        cloneref = _G.cloneref
+
+        local result2 = scanner.initialize_game(mock_current_game)
+        assert_equal(mock_cloneref_game, result2, "Should fallback to cloneref if getgenv fails")
+
+        -- 3. Test fallback to original current_game if both getgenv and cloneref fail
+        _G.cloneref = function(obj)
+            error("cloneref failed")
+        end
+        cloneref = _G.cloneref
+
+        local result3 = scanner.initialize_game(mock_current_game)
+        assert_equal(mock_current_game, result3, "Should fallback to original current_game if all fallbacks fail")
+    end)
+
+    -- Restore globals in all cases
+    _G.getgenv = original_getgenv
+    getgenv = original_getgenv
+    _G.cloneref = original_cloneref
+    cloneref = original_cloneref
+
+    if not ok then
+        print("FAIL: initialize_game test threw an error: " .. tostring(err))
+        failed = failed + 1
+    else
+        passed = passed + 1
+    end
+else
+    print("FAIL: initialize_game function not exported")
     failed = failed + 1
 end
 

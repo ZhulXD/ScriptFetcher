@@ -516,7 +516,9 @@ local export = {
     DEFAULT_CONFIG = DEFAULT_CONFIG
 }
 
+
 if SCANNER_TEST_MODE then
+    export.initialize_game = initialize_game
     export.sanitize = sanitize
     export.should_ignore = should_ignore
     export.get_properties_string = get_properties_string
@@ -527,6 +529,7 @@ if SCANNER_TEST_MODE then
     export.GetService = GetService
     export.process_object = process_object
     export.deep_scan_recursive = deep_scan_recursive
+    export.do_tree_scan = do_tree_scan
 end
 
 return export
