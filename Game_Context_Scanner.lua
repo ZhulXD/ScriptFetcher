@@ -203,7 +203,8 @@ local function handle_basepart(obj, props)
     local shouldLog = name == "Handle" or transparency > 0.9
 
     if not shouldLog then
-        shouldLog = name:find("[Hh][Ii][Tt][Bb][Oo][Xx]") or name:find("[Rr][Oo][Oo][Tt]")
+        local lowerName = name:lower()
+        shouldLog = lowerName:find("hitbox", 1, true) or lowerName:find("root", 1, true)
     end
 
     if shouldLog then
