@@ -1,5 +1,0 @@
-🧪 Add test coverage and cyclical reference prevention for generate_tree_map
-
-🎯 **What:** The testing gap for handling cyclical references (stack overflows) in `generate_tree_map` and `extract_tree_data` was unaddressed, posing a risk of infinite recursion.
-📊 **Coverage:** A new test case was added to `test_units.lua` to mock a cyclic tree hierarchy and verify that `generate_tree_map` terminates successfully and formats the tree correctly without a stack overflow. The `extract_tree_data` function was updated with a `visited` tracker to short-circuit recursion if it encounters the same node.
-✨ **Result:** Test coverage is expanded to handle cyclical references safely, improving the stability of `generate_tree_map` against deeply nested or malformed trees.
