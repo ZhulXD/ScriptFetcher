@@ -268,26 +268,22 @@ local function get_properties_string(obj)
     local className = obj.ClassName
     local handler = className and CLASS_HANDLER_CACHE[className]
 
-    if handler ~= nil then
-        if handler ~= false then
-            handler(obj, props)
-        end
-    else
-        local found = false
+    if handler == nil then
+        handler = false
         for i = 1, #PROPERTY_HANDLERS do
             local mapping = PROPERTY_HANDLERS[i]
             if obj:IsA(mapping.class) then
-                if className then
-                    CLASS_HANDLER_CACHE[className] = mapping.handler
-                end
-                mapping.handler(obj, props)
-                found = true
+                handler = mapping.handler
                 break
             end
         end
-        if not found and className then
-            CLASS_HANDLER_CACHE[className] = false
+        if className then
+            CLASS_HANDLER_CACHE[className] = handler
         end
+    end
+
+    if handler then
+        handler(obj, props)
     end
 
     if #props > 0 then
