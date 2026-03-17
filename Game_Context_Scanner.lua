@@ -134,26 +134,25 @@ local MAX_ATTEMPTS = 5
 local function get_script_source(scriptObj)
     if not decompile then return "-- [Decompiler not available]" end
     local attempts = 0
-    local success = false
-    local source = "-- [Failed to decompile]"
     local retry_delay = 0.02
 
-    while attempts < MAX_ATTEMPTS and not success do
+    while attempts < MAX_ATTEMPTS do
         attempts = attempts + 1
         local ok, result = pcall(decompile, scriptObj)
 
-        if ok and type(result) == "string" and string.find(result, "failed to decompile bytecode: Too Many Requests", 1, true) then
-            warn("[SCANNER] Rate limit on " .. sanitize(scriptObj.Name) .. " - Waiting 1.5s...")
-            task.wait(1.5)
-        elseif ok and type(result) == "string" and result ~= "" then
-            source = result
-            success = true
+        if ok and type(result) == "string" and result ~= "" then
+            if string.find(result, "failed to decompile bytecode: Too Many Requests", 1, true) then
+                warn("[SCANNER] Rate limit on " .. sanitize(scriptObj.Name) .. " - Waiting 1.5s...")
+                task.wait(1.5)
+            else
+                return result
+            end
         else
             task.wait(retry_delay)
             retry_delay = math.min(0.1, retry_delay * 2)
         end
     end
-    return source
+    return "-- [Failed to decompile]"
 end
 
 -- 6. PROPERTY DUMPER
