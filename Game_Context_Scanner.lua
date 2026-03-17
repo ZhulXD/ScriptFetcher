@@ -61,9 +61,9 @@ if not decompile and debug and debug.decompile then
     decompile = debug.decompile
 end
 
-local FILENAME = "Game_Context_" .. tostring(game.PlaceId):gsub("[^%w]", "") .. ".txt"
+local FILENAME = "Game_Context_" .. tostring(game and game.PlaceId or "unknown"):gsub("[^%w]", "") .. ".txt"
 local success, err = pcall(function()
-    writefile(FILENAME, "=== GAME CONTEXT SCAN ===\nTime: " .. tostring(os.date()) .. "\nPlace ID: " .. game.PlaceId .. "\n\n")
+    writefile(FILENAME, "=== GAME CONTEXT SCAN ===\nTime: " .. tostring(os.date()) .. "\nPlace ID: " .. tostring(game and game.PlaceId or "unknown") .. "\n\n")
 end)
 if not success then
     warn("[SCANNER] Failed to create log file: " .. tostring(err))
@@ -481,11 +481,7 @@ local function get_targets_for_mode(mode, scan_targets)
             if target.is_player_child then
                 local player = Players.LocalPlayer
                 if player then
-                    if mode == "tree" then
-                        obj = player:WaitForChild(target.name, 5)
-                    else
-                        obj = player:FindFirstChild(target.name)
-                    end
+                    obj = player:FindFirstChild(target.name)
                 end
             else
                 obj = GetService(target.name)
