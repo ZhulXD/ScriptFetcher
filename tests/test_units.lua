@@ -63,6 +63,7 @@ if scanner.should_ignore then
     assert_equal(true, scanner.should_ignore(ignoredObj), "Should ignore ChatScript (default)")
     assert_equal(false, scanner.should_ignore(validObj), "Should not ignore MyScript (default)")
     assert_equal(true, scanner.should_ignore(nil), "Should ignore nil")
+    assert_equal(true, scanner.should_ignore({}), "Should ignore object with missing Name")
 
     -- 2. Custom ignore list
     local customIgnore = { ["MyScript"] = true }
@@ -582,7 +583,7 @@ if scanner.do_tree_scan then
     players.LocalPlayer.WaitForChild = function() return nil end
 
     local ok, err = pcall(function()
-        scanner.do_tree_scan({})
+        scanner.do_tree_scan({}, {})
     end)
 
     assert_equal(true, ok, "do_tree_scan should handle nil services gracefully")
@@ -593,6 +594,7 @@ if scanner.do_tree_scan then
     -- Restore mocks
     game.GetService = original_getservice
     players.LocalPlayer.WaitForChild = original_waitforchild
+
 else
     print("FAIL: do_tree_scan function not exported")
     failed = failed + 1
@@ -783,12 +785,23 @@ if scanner.get_targets_for_mode then
     assert_equal("ReplicatedStorage", treeTargets[1].Name, "Tree target 1 check")
     assert_equal("PlayerGui", treeTargets[2].Name, "Tree target 2 check")
 
+
+    local original_findfirstchild = helper.players.LocalPlayer.FindFirstChild
+    helper.players.LocalPlayer.FindFirstChild = function(self, name)
+        if name == "PlayerGui" then
+            return { Name = "PlayerGui" }
+        end
+        return nil
+    end
+
     -- 2. Deep mode
+
     local deepTargets = scanner.get_targets_for_mode("deep", customTargets)
     assert_equal(3, #deepTargets, "Deep mode should return 3 targets")
     assert_equal("ReplicatedStorage", deepTargets[1].Name, "Deep target 1 check")
     assert_equal("PlayerGui", deepTargets[2].Name, "Deep target 2 check")
     assert_equal("StarterPack", deepTargets[3].Name, "Deep target 3 check")
+    helper.players.LocalPlayer.FindFirstChild = original_findfirstchild
 else
     print("FAIL: get_targets_for_mode function not exported")
     failed = failed + 1

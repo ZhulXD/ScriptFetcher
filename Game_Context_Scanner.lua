@@ -125,6 +125,7 @@ local function should_ignore(obj, ignore_list)
     if not obj then return true end
     -- Fallback to default if not provided
     local list = ignore_list or DEFAULT_CONFIG.ignore_list
+    if not obj.Name then return true end
     if list[obj.Name] then return true end
 
     -- OPTIMIZATION: Skipped IsDescendantOf(CoreGui/etc) checks because we only scan disjoint services.
