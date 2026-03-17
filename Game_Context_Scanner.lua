@@ -524,6 +524,7 @@ if SCANNER_TEST_MODE then
     export.GetService = GetService
     export.process_object = process_object
     export.deep_scan_recursive = deep_scan_recursive
+    export.do_tree_scan = do_tree_scan
 end
 
 return export
