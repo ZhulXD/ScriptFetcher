@@ -496,6 +496,7 @@ if SCANNER_TEST_MODE then
     export.append_log = append_log
     export.GetService = GetService
     export.process_object = process_object
+    export.deep_scan_recursive = deep_scan_recursive
 end
 
 return export
