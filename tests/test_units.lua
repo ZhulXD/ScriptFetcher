@@ -686,7 +686,8 @@ if scanner.initialize_game then
         end
         cloneref = _G.cloneref
 
-        local result1 = scanner.initialize_game(mock_current_game)
+        local temp_scanner = helper.load_scanner()
+        local result1 = temp_scanner.initialize_game(mock_current_game)
         assert_equal(mock_getgenv_game, result1, "Should fallback to getgenv().game if player service is missing")
 
         -- 2. Test fallback to cloneref(current_game) if getgenv().game is nil or fails
@@ -704,7 +705,8 @@ if scanner.initialize_game then
         end
         cloneref = _G.cloneref
 
-        local result2 = scanner.initialize_game(mock_current_game)
+        temp_scanner = helper.load_scanner()
+        local result2 = temp_scanner.initialize_game(mock_current_game)
         assert_equal(mock_cloneref_game, result2, "Should fallback to cloneref if getgenv fails")
 
         -- 3. Test fallback to original current_game if both getgenv and cloneref fail
@@ -713,7 +715,8 @@ if scanner.initialize_game then
         end
         cloneref = _G.cloneref
 
-        local result3 = scanner.initialize_game(mock_current_game)
+        temp_scanner = helper.load_scanner()
+        local result3 = temp_scanner.initialize_game(mock_current_game)
         assert_equal(mock_current_game, result3, "Should fallback to original current_game if all fallbacks fail")
     end)
 
