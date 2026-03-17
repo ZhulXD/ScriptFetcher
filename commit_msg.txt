@@ -1,12 +1,5 @@
-🧪 [testing improvement] Add missing unit test for do_tree_scan with empty services
+🧪 Add test coverage and cyclical reference prevention for generate_tree_map
 
-🎯 **What:** The testing gap addressed
-This pull request addresses the testing gap in `Game_Context_Scanner.lua` by adding a missing unit test for `do_tree_scan` when game services (`ReplicatedStorage`, `Workspace`, `StarterGui`, and `PlayerGui`) return `nil` or are not present.
-
-📊 **Coverage:** What scenarios are now tested
-- The `do_tree_scan` loop handling when iterating over an empty or `nil` map of services.
-- Mocks were introduced to return `nil` for `game:GetService` and `Players.LocalPlayer:WaitForChild`.
-- The execution of `scanner.do_tree_scan({})` is wrapped in a `pcall` to ensure it gracefully completes without throwing runtime errors or exceptions when encountering missing services.
-
-✨ **Result:** The improvement in test coverage
-- Increased code reliability by guaranteeing that `do_tree_scan` can safely handle limited or locked Roblox environments (e.g., restricted plugins or strict execution contexts) where certain standard services might be inaccessible. Test suite summary shows an additional test successfully passed.
+🎯 **What:** The testing gap for handling cyclical references (stack overflows) in `generate_tree_map` and `extract_tree_data` was unaddressed, posing a risk of infinite recursion.
+📊 **Coverage:** A new test case was added to `test_units.lua` to mock a cyclic tree hierarchy and verify that `generate_tree_map` terminates successfully and formats the tree correctly without a stack overflow. The `extract_tree_data` function was updated with a `visited` tracker to short-circuit recursion if it encounters the same node.
+✨ **Result:** Test coverage is expanded to handle cyclical references safely, improving the stability of `generate_tree_map` against deeply nested or malformed trees.

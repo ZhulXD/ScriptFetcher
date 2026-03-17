@@ -297,7 +297,10 @@ local function get_properties_string(obj)
 end
 
 -- 6. TREE MAP GENERATOR (Optimized with table buffer)
-local function extract_tree_data(root, cachedChildren, yield_counter, ignore_list)
+local function extract_tree_data(root, cachedChildren, yield_counter, ignore_list, visited)
+    visited = visited or {}
+    if visited[root] then return {} end
+    visited[root] = true
     yield_counter = yield_counter or {count = 0}
     local children = cachedChildren
     if not children then
@@ -323,7 +326,7 @@ local function extract_tree_data(root, cachedChildren, yield_counter, ignore_lis
 
             local childNodes = nil
             if #grandChildren > 0 then
-                childNodes = extract_tree_data(child, grandChildren, yield_counter, ignore_list)
+                childNodes = extract_tree_data(child, grandChildren, yield_counter, ignore_list, visited)
             end
 
             if tag ~= "" or (childNodes and #childNodes > 0) then
