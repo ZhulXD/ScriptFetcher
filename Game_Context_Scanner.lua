@@ -385,6 +385,8 @@ local function process_object(obj)
         if source then
             source = string.gsub(source, "<<< END SOURCE", "<\\<\\< END SOURCE")
             source = string.gsub(source, ">>> SOURCE", ">\\>\\> SOURCE")
+            source = string.gsub(source, "%[PROPERTIES%]", "\\[PROPERTIES\\]")
+            source = string.gsub(source, "%[REMOTE DETECTED%]", "\\[REMOTE DETECTED\\]")
             append_log(source)
         end
         append_log("<<< END SOURCE\n")
