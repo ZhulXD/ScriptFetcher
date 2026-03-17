@@ -115,7 +115,12 @@ local players = game:GetService("Players")
 players.LocalPlayer = {
     Name = "LocalPlayer",
     WaitForChild = function(self, name) return create_instance("Folder", name) end,
-    FindFirstChild = function(self, name) return nil end
+    FindFirstChild = function(self, name)
+        if name == "PlayerGui" then
+            return create_instance("Folder", "PlayerGui")
+        end
+        return nil
+    end
 }
 
 -- Global functions

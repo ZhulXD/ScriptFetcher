@@ -476,6 +476,7 @@ local function get_targets_for_mode(mode, scan_targets)
     for _, target in ipairs(scan_targets) do
         if target[mode] then
             local obj
+            if not Players then Players = GetService("Players") end
             if target.is_player_child then
                 local player = Players.LocalPlayer
                 if player then
@@ -499,6 +500,7 @@ end
 
 local function do_tree_scan(current_ignore_list, scan_targets)
     append_log("\n=== 1. HIERARCHY MAP (Tree View) ===")
+    scan_targets = scan_targets or DEFAULT_CONFIG.scan_targets
     local map_services = get_targets_for_mode("tree", scan_targets)
 
     for _, service in ipairs(map_services) do
@@ -511,6 +513,7 @@ end
 
 local function do_deep_scan(current_ignore_list, scan_targets)
     append_log("\n=== 2. DEEP SCAN (Code & Remotes) ===")
+    scan_targets = scan_targets or DEFAULT_CONFIG.scan_targets
     local deep_scan_services = get_targets_for_mode("deep", scan_targets)
 
     for _, service in ipairs(deep_scan_services) do
@@ -580,6 +583,7 @@ if SCANNER_TEST_MODE then
     export.extract_tree_data = extract_tree_data
     export.deep_scan_recursive = deep_scan_recursive
     export.do_tree_scan = do_tree_scan
+    export.do_deep_scan = do_deep_scan
     export.get_targets_for_mode = get_targets_for_mode
 end
 
