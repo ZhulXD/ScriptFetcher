@@ -768,6 +768,44 @@ else
     failed = failed + 1
 end
 
+-- Test get_safe_children
+if scanner.get_safe_children then
+    print("Testing get_safe_children...")
+
+    -- 1. Success (returns table)
+    local mock_node_success = {
+        GetChildren = function()
+            return {"child1", "child2"}
+        end
+    }
+    local res_success = scanner.get_safe_children(mock_node_success)
+    assert_equal("table", type(res_success), "get_safe_children should return a table on success")
+    assert_equal(2, #res_success, "get_safe_children should return correct number of children")
+
+    -- 2. Error Handling (pcall failure)
+    local mock_node_error = {
+        GetChildren = function()
+            error("Simulated GetChildren error")
+        end
+    }
+    local res_error = scanner.get_safe_children(mock_node_error)
+    assert_equal("table", type(res_error), "get_safe_children should return a table on error")
+    assert_equal(0, #res_error, "get_safe_children should return an empty table on error")
+
+    -- 3. Non-table return handling
+    local mock_node_nontable = {
+        GetChildren = function()
+            return "not a table"
+        end
+    }
+    local res_nontable = scanner.get_safe_children(mock_node_nontable)
+    assert_equal("table", type(res_nontable), "get_safe_children should return a table when GetChildren returns non-table")
+    assert_equal(0, #res_nontable, "get_safe_children should return an empty table when GetChildren returns non-table")
+else
+    print("FAIL: get_safe_children function not exported")
+    failed = failed + 1
+end
+
 print("\nTest Summary: " .. passed .. " passed, " .. failed .. " failed.")
 
 if failed > 0 then

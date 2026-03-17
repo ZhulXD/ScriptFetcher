@@ -541,6 +541,7 @@ if SCANNER_TEST_MODE then
     export.extract_tree_data = extract_tree_data
     export.deep_scan_recursive = deep_scan_recursive
     export.do_tree_scan = do_tree_scan
+    export.get_safe_children = get_safe_children
 end
 
 return export
