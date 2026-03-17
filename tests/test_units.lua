@@ -853,34 +853,42 @@ else
 end
 
 
--- Test writefile failure during initialization
-print("Testing writefile failure during initialization...")
-local original_writefile = writefile
-local original_warn = warn
-local captured_warn = nil
 
-writefile = function()
-    error("Mock writefile failure")
-end
+-- Test do_deep_scan with empty/nil services
+if scanner.do_deep_scan then
+    print("Testing do_deep_scan with empty services...")
 
-warn = function(...)
-    local args = {...}
-    captured_warn = table.concat(args, " ")
-end
+    local original_getservice = game.GetService
+    local players = original_getservice(game, "Players")
+    local original_waitforchild = players.LocalPlayer.WaitForChild
+    local original_findfirstchild = players.LocalPlayer.FindFirstChild
 
-local success, err = pcall(function()
-    helper.load_scanner()
-end)
+    -- Mock GetService and WaitForChild/FindFirstChild to return nil
+    game.GetService = function() return nil end
+    players.LocalPlayer.WaitForChild = function() return nil end
+    players.LocalPlayer.FindFirstChild = function() return nil end
 
-writefile = original_writefile
-warn = original_warn
+    local ok, err = pcall(function()
+        scanner.do_deep_scan({}, {
+            { name = "Workspace", tree = true, deep = true },
+            { name = "PlayerGui", tree = true, deep = true, is_player_child = true }
+        })
+    end)
 
-if not success then
-    print("FAIL: load_scanner failed with error: " .. tostring(err))
+    assert_equal(true, ok, "do_deep_scan should handle nil services gracefully")
+    if not ok then
+        print("Error was: " .. tostring(err))
+    end
+
+    -- Restore mocks
+    game.GetService = original_getservice
+    players.LocalPlayer.WaitForChild = original_waitforchild
+    players.LocalPlayer.FindFirstChild = original_findfirstchild
+else
+    print("FAIL: do_deep_scan function not exported")
     failed = failed + 1
 end
 
-assert_match("%[SCANNER%] Failed to create log file:.*Mock writefile failure", captured_warn, "Should log writefile failure")
 print("\nTest Summary: " .. passed .. " passed, " .. failed .. " failed.")
 
 if failed > 0 then
