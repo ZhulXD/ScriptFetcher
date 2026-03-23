@@ -947,6 +947,46 @@ else
     failed = failed + 1
 end
 
+
+-- Test get_safe_children
+if scanner.get_safe_children then
+    print("Testing get_safe_children...")
+
+    -- 1. Normal case
+    local node1 = mock.create_instance("Folder", "NormalFolder")
+    mock.create_instance("Part", "Child1", node1)
+    mock.create_instance("Part", "Child2", node1)
+
+    local children = scanner.get_safe_children(node1)
+    assert_equal("table", type(children), "Returns table on success")
+    assert_equal(2, #children, "Returns all children")
+
+    -- 2. Error case (GetChildren throws an error)
+    local node2 = {
+        GetChildren = function()
+            error("Access Denied")
+        end
+    }
+
+    local children2 = scanner.get_safe_children(node2)
+    assert_equal("table", type(children2), "Returns table on error")
+    assert_equal(0, #children2, "Returns empty table on error")
+
+    -- 3. Non-table return case
+    local node3 = {
+        GetChildren = function()
+            return "not a table"
+        end
+    }
+
+    local children3 = scanner.get_safe_children(node3)
+    assert_equal("table", type(children3), "Returns table when not-a-table returned")
+    assert_equal(0, #children3, "Returns empty table when not-a-table returned")
+else
+    print("FAIL: get_safe_children function not exported")
+    failed = failed + 1
+end
+
 print("\nTest Summary: " .. passed .. " passed, " .. failed .. " failed.")
 
 if failed > 0 then
