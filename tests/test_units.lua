@@ -204,6 +204,38 @@ if scanner.get_properties_string then
     assert_match("Image: rbxassetid://456", imgProps, "ImageButton Image check")
     assert_match("Visible: false", imgProps, "ImageButton Visible check")
 
+    local textBox = mock.create_instance("TextBox", "Input")
+    textBox.Text = "Enter text..."
+    textBox.Visible = true
+    textBox.Active = true
+    local txtBoxProps = scanner.get_properties_string(textBox)
+    assert_match('Text: "Enter text..."', txtBoxProps, "TextBox Text check")
+    assert_match("Visible: true", txtBoxProps, "TextBox Visible check")
+    assert_match("Active: true", txtBoxProps, "TextBox Active check")
+
+    local imgLabel = mock.create_instance("ImageLabel", "Logo")
+    imgLabel.Image = "rbxassetid://789"
+    imgLabel.Visible = true
+    local imgLabelProps = scanner.get_properties_string(imgLabel)
+    assert_match("Image: rbxassetid://789", imgLabelProps, "ImageLabel Image check")
+    assert_match("Visible: true", imgLabelProps, "ImageLabel Visible check")
+
+    local textBox = mock.create_instance("TextBox", "Input")
+    textBox.Text = "Enter text..."
+    textBox.Visible = true
+    textBox.Active = true
+    local txtBoxProps = scanner.get_properties_string(textBox)
+    assert_match('Text: "Enter text..."', txtBoxProps, "TextBox Text check")
+    assert_match("Visible: true", txtBoxProps, "TextBox Visible check")
+    assert_match("Active: true", txtBoxProps, "TextBox Active check")
+
+    local imgLabel = mock.create_instance("ImageLabel", "Logo")
+    imgLabel.Image = "rbxassetid://789"
+    imgLabel.Visible = true
+    local imgLabelProps = scanner.get_properties_string(imgLabel)
+    assert_match("Image: rbxassetid://789", imgLabelProps, "ImageLabel Image check")
+    assert_match("Visible: true", imgLabelProps, "ImageLabel Visible check")
+
     -- 11. Edge Cases (Unexpected Inputs)
     print("Testing get_properties_string edge cases...")
     assert_nil(scanner.get_properties_string(nil), "Should handle nil input")
