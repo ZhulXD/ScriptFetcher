@@ -463,8 +463,7 @@ end
 local function deep_scan_recursive(root, yield_counter, ignore_list, callback)
     yield_counter = yield_counter or {count = 0}
 
-    local children = root:GetChildren()
-    children = type(children) == "table" and children or {}
+    local children = get_safe_children(root)
     for _, child in ipairs(children) do
         if not should_ignore(child, ignore_list) then
             increment_yield_counter(yield_counter)
