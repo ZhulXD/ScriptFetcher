@@ -1,5 +1,4 @@
 import sys
-import os
 import unittest
 
 # The environment may lack lupa, but existing scripts rely on importing it.
