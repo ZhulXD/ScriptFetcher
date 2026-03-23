@@ -417,6 +417,17 @@ local function generate_tree_map(root, ignore_list)
     return table.concat(buffer)
 end
 
+local function source_gsub_handler(m)
+    local rep = SOURCE_REPLACEMENTS[m]
+    if rep then return rep end
+    -- Escape if it looks like a potential marker spoof (starts with trigger and contains letters/dashes)
+    -- Refined for brackets: Must start with [ and contain uppercase letters like [PROPERTIES]
+    if m:find("^<<<") or m:find("^>>>") or m:find("^===") or m:find("^%-%-%-") or (m:find("^%[") and m:find("%u")) then
+        return (m:gsub("[<%>%[\\%-%=]", "\\%0"))
+    end
+    return m
+end
+
 local function process_object(obj)
     local sanitized_name
 
@@ -442,16 +453,7 @@ local function process_object(obj)
         -- Decompile
         local source = get_script_source(obj)
         if source then
-            source = string.gsub(source, "([%[<%-%=]+[%w%s%-%=%.%[%]%(%):%]]+)", function(m)
-                local rep = SOURCE_REPLACEMENTS[m]
-                if rep then return rep end
-                -- Escape if it looks like a potential marker spoof (starts with trigger and contains letters/dashes)
-                -- Refined for brackets: Must start with [ and contain uppercase letters like [PROPERTIES]
-                if m:find("^<<<") or m:find("^>>>") or m:find("^===") or m:find("^%-%-%-") or (m:find("^%[") and m:find("%u")) then
-                    return (m:gsub("[<%>%[\\%-%=]", "\\%0"))
-                end
-                return m
-            end)
+            source = string.gsub(source, "([%[<%-%=]+[%w%s%-%=%.%[%]%(%):%]]+)", source_gsub_handler)
             append_log(source)
         end
         append_log("<<< END SOURCE\n")
@@ -578,6 +580,7 @@ if SCANNER_TEST_MODE then
     export.append_log = append_log
     export.GetService = GetService
     export.process_object = process_object
+    export.source_gsub_handler = source_gsub_handler
     export.extract_tree_data = extract_tree_data
     export.deep_scan_recursive = deep_scan_recursive
     export.do_tree_scan = do_tree_scan
