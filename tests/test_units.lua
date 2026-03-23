@@ -741,6 +741,26 @@ if scanner.initialize_game then
         temp_scanner = helper.load_scanner()
         local result3 = temp_scanner.initialize_game(mock_current_game)
         assert_equal(mock_current_game, result3, "Should fallback to original current_game if all fallbacks fail")
+
+        -- 4. Test cloneref succeeds when getgenv().game returns nil
+        local mock_cloneref_game2 = { name = "MockClonerefGame2" }
+        _G.getgenv = function()
+            return { game = nil }
+        end
+        getgenv = _G.getgenv
+
+        _G.cloneref = function(obj)
+            -- If current_game was overwritten by nil, this might receive nil or be called incorrectly
+            if obj == mock_current_game then
+                return mock_cloneref_game2
+            end
+            return obj
+        end
+        cloneref = _G.cloneref
+
+        temp_scanner = helper.load_scanner()
+        local result4 = temp_scanner.initialize_game(mock_current_game)
+        assert_equal(mock_cloneref_game2, result4, "Should use cloneref even if getgenv().game is nil")
     end)
 
     -- Restore globals in all cases
