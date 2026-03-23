@@ -449,6 +449,21 @@ if scanner.append_log and scanner.flush_log then
 
     assert_equal(true, ok, "flush_log should safely handle appendfile errors")
 
+    -- 4. Empty buffer handling
+    local appendfile_called = false
+    _G.appendfile = function(...) appendfile_called = true end
+    appendfile = _G.appendfile
+
+    -- Ensure buffer is empty
+    scanner.flush_log()
+    appendfile_called = false
+
+    -- Call flush_log on an empty buffer
+    scanner.flush_log()
+
+    -- It should NOT call appendfile
+    assert_equal(false, appendfile_called, "flush_log should not call appendfile when buffer is empty")
+
     -- Restore mocks
     _G.appendfile = original_appendfile
     appendfile = original_appendfile
