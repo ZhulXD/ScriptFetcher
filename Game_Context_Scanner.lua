@@ -326,7 +326,7 @@ end
 
 local function get_safe_children(node)
     local success, res = pcall(node.GetChildren, node)
-    return success and type(res) == "table" and res or {}
+    return success and res or {}
 end
 
 local function get_node_tag(node)
