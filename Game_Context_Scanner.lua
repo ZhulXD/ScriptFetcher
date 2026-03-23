@@ -30,10 +30,11 @@ local function initialize_game(current_game)
     if current_game and pcall(function() return current_game:GetService("Players") end) then
         return current_game
     end
-    if type(getgenv) == "function" and pcall(function() return getgenv().game end) then
-        current_game = getgenv().game
+    if type(getgenv) == "function" then
+        local s, r = pcall(function() return getgenv().game end)
+        if s and r then current_game = r end
     end
-    if type(cloneref) == "function" and pcall(function() return cloneref(current_game) end) then
+    if type(cloneref) == "function" then
         local s, r = pcall(cloneref, current_game)
         if s and r then current_game = r end
     end
