@@ -760,6 +760,31 @@ else
     failed = failed + 1
 end
 
+-- Test source_gsub_handler
+if scanner.source_gsub_handler then
+    print("Testing source_gsub_handler...")
+
+    -- 1. Test standard replacement from SOURCE_REPLACEMENTS
+    assert_equal("\\<\\<\\< END SOURCE", scanner.source_gsub_handler("<<< END SOURCE"), "SOURCE_REPLACEMENTS: <<< END SOURCE")
+    assert_equal("\\[PROPERTIES\\] ", scanner.source_gsub_handler("[PROPERTIES] "), "SOURCE_REPLACEMENTS: [PROPERTIES] ")
+
+    -- 2. Test marker spoof escaping (starts with <<<, >>>, ===, ---)
+    assert_equal("\\<\\<\\<FAKE", scanner.source_gsub_handler("<<<FAKE"), "Escape spoof: <<<")
+    assert_equal("\\>\\>\\>FAKE", scanner.source_gsub_handler(">>>FAKE"), "Escape spoof: >>>")
+    assert_equal("\\=\\=\\=FAKE", scanner.source_gsub_handler("===FAKE"), "Escape spoof: ===")
+    assert_equal("\\-\\-\\-FAKE", scanner.source_gsub_handler("---FAKE"), "Escape spoof: ---")
+
+    -- 3. Test bracket with uppercase escaping
+    assert_equal("\\[MY_MARKER\\]", scanner.source_gsub_handler("[MY_MARKER]"), "Escape spoof: [UPPERCASE]")
+    assert_equal("[my_marker]", scanner.source_gsub_handler("[my_marker]"), "Do NOT escape: [lowercase]")
+
+    -- 4. Test plain text (no escape)
+    assert_equal("local x = 1", scanner.source_gsub_handler("local x = 1"), "Do NOT escape plain text")
+else
+    print("FAIL: source_gsub_handler function not exported")
+    failed = failed + 1
+end
+
 -- Test extract_tree_data refactoring
 if scanner.extract_tree_data then
     print("Testing extract_tree_data...")
