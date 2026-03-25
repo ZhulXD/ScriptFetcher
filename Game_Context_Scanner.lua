@@ -62,12 +62,36 @@ if not decompile and debug and debug.decompile then
     decompile = debug.decompile
 end
 
-local FILENAME = "Game_Context_" .. tostring(game and game.PlaceId or "unknown"):gsub("[^%w]", "") .. ".txt"
-local success, err = pcall(function()
-    writefile(FILENAME, "=== GAME CONTEXT SCAN ===\nTime: " .. tostring(os.date()) .. "\nPlace ID: " .. tostring(game and game.PlaceId or "unknown") .. "\n\n")
-end)
-if not success then
-    warn("[SCANNER] Failed to create log file: " .. tostring(err))
+-- ATTEMPT TO RESOLVE FILE FUNCTIONS
+local writefile = writefile
+local appendfile = appendfile
+if type(getgenv) == "function" then
+    local env = getgenv()
+    writefile = writefile or env.writefile
+    appendfile = appendfile or env.appendfile
+end
+
+local function get_safe_place_id()
+    if not game then return "unknown" end
+    local s, id = pcall(function() return game.PlaceId end)
+    return s and tostring(id) or "unknown"
+end
+
+local PLACE_ID_STR = get_safe_place_id()
+local FILENAME = "Game_Context_" .. PLACE_ID_STR:gsub("[^%w]", "") .. ".txt"
+local LOGGING_ENABLED = false
+
+if type(writefile) == "function" and type(appendfile) == "function" then
+    local success, err = pcall(function()
+        writefile(FILENAME, "=== GAME CONTEXT SCAN ===\nTime: " .. tostring(os.date()) .. "\nPlace ID: " .. PLACE_ID_STR .. "\n\n")
+    end)
+    if success then
+        LOGGING_ENABLED = true
+    else
+        warn("[SCANNER] Failed to create log file: " .. tostring(err))
+    end
+else
+    warn("[SCANNER] File functions (writefile/appendfile) not available. Logging disabled.")
 end
 
 -- OPTIMIZATION: Buffer logs to reduce I/O
@@ -75,17 +99,22 @@ local LOG_BUFFER = {}
 local BUFFER_SIZE = 5000
 
 local function flush_log()
-    if #LOG_BUFFER > 0 then
-        -- appendfile is expensive, so we do it once per chunk
-        local ok, writeErr = pcall(appendfile, FILENAME, table.concat(LOG_BUFFER, ""))
-        if not ok then
-            warn("[SCANNER] Failed to append log: " .. tostring(writeErr))
-        end
+    if not LOGGING_ENABLED or #LOG_BUFFER == 0 then
         LOG_BUFFER = {}
+        return
     end
+
+    -- appendfile is expensive, so we do it once per chunk
+    local ok, writeErr = pcall(appendfile, FILENAME, table.concat(LOG_BUFFER, ""))
+    if not ok then
+        warn("[SCANNER] Failed to append log: " .. tostring(writeErr))
+    end
+    LOG_BUFFER = {}
 end
 
 local function append_log(...)
+    if not LOGGING_ENABLED then return end
+
     local len = #LOG_BUFFER
     for i = 1, select("#", ...) do
         local v = select(i, ...)
@@ -546,15 +575,19 @@ local function execute_full_scan(config)
     -- B. DEEP SCAN
     do_deep_scan(current_ignore_list, scan_targets)
 
-    print("[SCANNER] Complete! File Saved: " .. FILENAME)
     append_log("\n=== END OF SCAN ===")
     flush_log() -- Final flush to ensure everything is written
 
-    if game then game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "Scan Complete!",
-        Text = "Saved to " .. FILENAME,
-        Duration = 5
-    }) end
+    if LOGGING_ENABLED then
+        print("[SCANNER] Complete! File Saved: " .. FILENAME)
+        if game then game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "Scan Complete!",
+            Text = "Saved to " .. FILENAME,
+            Duration = 5
+        }) end
+    else
+        print("[SCANNER] Complete (Logging was disabled).")
+    end
 end
 
 if not SCANNER_TEST_MODE then
