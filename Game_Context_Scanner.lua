@@ -202,7 +202,7 @@ local function get_script_source(scriptObj)
         local ok, result = pcall(decompile, scriptObj)
 
         if ok and type(result) == "string" and result ~= "" then
-            if string.find(result, "failed to decompile bytecode: Too Many Requests", 1, true) then
+            if #result < 100 and string.find(result, "failed to decompile bytecode: Too Many Requests", 1, true) then
                 warn("[SCANNER] Rate limit on " .. sanitize(scriptObj.Name) .. " - Waiting 1.5s...")
                 task.wait(1.5)
             else
