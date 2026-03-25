@@ -584,6 +584,7 @@ if SCANNER_TEST_MODE then
     export.get_node_tag = get_node_tag
     export.extract_tree_data = extract_tree_data
     export.deep_scan_recursive = deep_scan_recursive
+    export.get_safe_children = get_safe_children
     export.do_tree_scan = do_tree_scan
     export.do_deep_scan = do_deep_scan
     export.get_targets_for_mode = get_targets_for_mode
