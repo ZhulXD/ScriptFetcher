@@ -246,22 +246,22 @@ local function handle_value(obj, props)
     add_prop(props, "Value", sanitize(obj.Value))
 end
 
-local function handle_text(obj, props)
-    add_prop(props, "Text", '"' .. sanitize(obj.Text) .. '"')
+local function handle_gui_common(obj, props)
     add_prop(props, "Visible", obj.Visible)
     local className = obj.ClassName
-    if className == "TextButton" or className == "TextBox" then
+    if className == "TextButton" or className == "TextBox" or className == "ImageButton" then
         add_prop(props, "Active", obj.Active)
     end
 end
 
+local function handle_text(obj, props)
+    add_prop(props, "Text", '"' .. sanitize(obj.Text) .. '"')
+    handle_gui_common(obj, props)
+end
 
 local function handle_image(obj, props)
     add_prop(props, "Image", sanitize(obj.Image))
-    add_prop(props, "Visible", obj.Visible)
-    if obj.ClassName == "ImageButton" then
-        add_prop(props, "Active", obj.Active)
-    end
+    handle_gui_common(obj, props)
 end
 
 local PROPERTY_HANDLERS = {
