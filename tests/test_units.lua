@@ -852,6 +852,21 @@ else
     failed = failed + 1
 end
 
+-- Test get_node_tag
+if scanner.get_node_tag then
+    print("Testing get_node_tag...")
+    local remote = mock.create_instance("RemoteEvent", "MyRemote")
+    local script = mock.create_instance("LocalScript", "MyScript")
+    local sound = mock.create_instance("Sound", "MySound")
+
+    assert_equal(" [REMOTE]", scanner.get_node_tag(remote), "get_node_tag for RemoteEvent")
+    assert_equal(" [SCRIPT]", scanner.get_node_tag(script), "get_node_tag for LocalScript")
+    assert_equal("", scanner.get_node_tag(sound), "get_node_tag for unmapped class (Sound)")
+else
+    print("FAIL: get_node_tag function not exported")
+    failed = failed + 1
+end
+
 -- Test extract_tree_data refactoring
 if scanner.extract_tree_data then
     print("Testing extract_tree_data...")
