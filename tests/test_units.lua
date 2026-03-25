@@ -842,7 +842,7 @@ if scanner.source_gsub_handler then
     assert_equal("\\-\\-\\-FAKE", scanner.source_gsub_handler("---FAKE"), "Escape spoof: ---")
 
     -- 3. Test bracket with uppercase escaping
-    assert_equal("\\[MY_MARKER\\]", scanner.source_gsub_handler("[MY_MARKER]"), "Escape spoof: [UPPERCASE]")
+    assert_equal("\\[MY_MARKER]", scanner.source_gsub_handler("[MY_MARKER]"), "Escape spoof: [UPPERCASE]")
     assert_equal("[my_marker]", scanner.source_gsub_handler("[my_marker]"), "Do NOT escape: [lowercase]")
 
     -- 4. Test plain text (no escape)

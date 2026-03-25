@@ -451,10 +451,17 @@ end
 local function source_gsub_handler(m)
     local rep = SOURCE_REPLACEMENTS[m]
     if rep then return rep end
-    -- Escape if it looks like a potential marker spoof (starts with trigger and contains letters/dashes)
-    -- Refined for brackets: Must start with [ and contain uppercase letters like [PROPERTIES]
-    if m:find("^<<<") or m:find("^>>>") or m:find("^===") or m:find("^%-%-%-") or (m:find("^%[") and m:find("%u")) then
-        return (m:gsub("[<%>%[\\%-%=]", "\\%0"))
+
+    local p1 = string.byte(m, 1)
+    if p1 == 91 then -- '['
+        if string.match(string.sub(m, 2, 2), "%u") then
+            return (string.gsub(m, "[<%>%[\\%-%=]", "\\%0"))
+        end
+    else
+        local p3 = string.sub(m, 1, 3)
+        if p3 == "<<<" or p3 == ">>>" or p3 == "===" or p3 == "---" then
+            return (string.gsub(m, "[<%>%[\\%-%=]", "\\%0"))
+        end
     end
     return m
 end
@@ -484,7 +491,7 @@ local function process_object(obj)
         -- Decompile
         local source = get_script_source(obj)
         if source then
-            source = string.gsub(source, "([%[<%-%=]+[%w%s%-%=%.%[%]%(%):%]]+)", source_gsub_handler)
+            source = string.gsub(source, "([<>=%-%[][<>=%-%[A-Z][^\n\r]*)", source_gsub_handler)
             append_log(source)
         end
         append_log("<<< END SOURCE\n")
