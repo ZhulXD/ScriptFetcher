@@ -498,7 +498,13 @@ local function process_object(obj)
     end
 end
 
-local function deep_scan_recursive(root, yield_counter, ignore_list, callback)
+local function deep_scan_recursive(root, yield_counter, ignore_list, callback, visited)
+    if not root then return end
+
+    visited = visited or {}
+    if visited[root] then return end
+    visited[root] = true
+
     yield_counter = yield_counter or {count = 0}
 
     local children = get_safe_children(root)
@@ -506,20 +512,25 @@ local function deep_scan_recursive(root, yield_counter, ignore_list, callback)
         if not should_ignore(child, ignore_list) then
             increment_yield_counter(yield_counter)
 
-            callback(child)
-            deep_scan_recursive(child, yield_counter, ignore_list, callback)
+            local ok, callbackErr = pcall(callback, child)
+            if not ok then
+                warn("[SCANNER] Failed to process object: " .. tostring(callbackErr))
+            end
+
+            deep_scan_recursive(child, yield_counter, ignore_list, callback, visited)
         end
     end
 end
 
 local function get_targets_for_mode(mode, scan_targets)
     local resolved = {}
+    if not Players then Players = GetService("Players") end
+    local player = Players and Players.LocalPlayer
+
     for _, target in ipairs(scan_targets) do
         if target[mode] then
             local obj
-            if not Players then Players = GetService("Players") end
             if target.is_player_child then
-                local player = Players.LocalPlayer
                 if player then
                     obj = player:FindFirstChild(target.name)
                 end
@@ -587,11 +598,20 @@ local function execute_full_scan(config)
 
     if LOGGING_ENABLED then
         print("[SCANNER] Complete! File Saved: " .. FILENAME)
-        if game then game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = "Scan Complete!",
-            Text = "Saved to " .. FILENAME,
-            Duration = 5
-        }) end
+
+        if game then
+            local ok, notifyErr = pcall(function()
+                game:GetService("StarterGui"):SetCore("SendNotification", {
+                    Title = "Scan Complete!",
+                    Text = "Saved to " .. FILENAME,
+                    Duration = 5
+                })
+            end)
+
+            if not ok then
+                warn("[SCANNER] Notification failed: " .. tostring(notifyErr))
+            end
+        end
     else
         print("[SCANNER] Complete (Logging was disabled).")
     end
