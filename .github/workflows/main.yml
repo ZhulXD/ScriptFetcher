@@ -1,4 +1,4 @@
-name: win 11 + tailscale + Download.bat script 
+name: win 11 + tailscale + Download.bat script
 
 on:
   workflow_dispatch:
@@ -21,12 +21,11 @@ jobs:
 
           # Remove any existing rule with the same name to avoid duplication
           netsh advfirewall firewall delete rule name="RDP-Tailscale"
-         
-          # For testing, allow any incoming connection on port 3389
-          netsh advfirewall firewall add rule name="RDP-Tailscale" `
-            dir=in action=allow protocol=TCP localport=3389
 
-          # (Optional) Restart the Remote Desktop service to ensure changes take effect
+          # Allow RDP only from the Tailscale network range (100.64.0.0/10)
+          netsh advfirewall firewall add rule name="RDP-Tailscale" `
+            dir=in action=allow protocol=TCP localport=3389 remoteip=100.64.0.0/10
+
           Restart-Service -Name TermService -Force
 
       - name: Create RDP User with Fixed Password
@@ -38,10 +37,8 @@ jobs:
           }
           Add-LocalGroupMember -Group "Administrators" -Member "RDP"
           Add-LocalGroupMember -Group "Remote Desktop Users" -Member "RDP"
-         
-          echo "RDP_CREDS=User: RDP | Password: $password" >> $env:GITHUB_ENV
-         
-          if (-not (Get-LocalUser -Name "RDP")) {
+
+          if (-not (Get-LocalUser -Name "RDP" -ErrorAction SilentlyContinue)) {
               Write-Error "User creation failed"
               exit 1
           }
@@ -50,36 +47,82 @@ jobs:
         run: |
           $tsUrl = "https://pkgs.tailscale.com/stable/tailscale-setup-1.82.0-amd64.msi"
           $installerPath = "$env:TEMP\tailscale.msi"
-         
+
           Invoke-WebRequest -Uri $tsUrl -OutFile $installerPath
           Start-Process msiexec.exe -ArgumentList "/i", "`"$installerPath`"", "/quiet", "/norestart" -Wait
           Remove-Item $installerPath -Force
 
+      - name: Generate Tailscale Auth Key via API
+        env:
+          TS_CLIENT_ID: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          TS_CLIENT_SECRET: ${{ secrets.TS_OAUTH_CLIENT_SECRET }}
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          # 1) Tukar OAuth client menjadi access token
+          $tok = Invoke-RestMethod -Method Post `
+            -Uri "https://api.tailscale.com/api/v2/oauth/token" `
+            -Body @{
+              client_id     = $env:TS_CLIENT_ID
+              client_secret = $env:TS_CLIENT_SECRET
+              grant_type    = "client_credentials"
+            }
+
+          # 2) Buat auth key baru: sekali pakai, ephemeral, berlaku 10 menit
+          $body = @{
+            expirySeconds = 600
+            capabilities  = @{
+              devices = @{
+                create = @{
+                  reusable      = $false
+                  ephemeral     = $true
+                  preauthorized = $true
+                  tags          = @("tag:ci")
+                }
+              }
+            }
+          } | ConvertTo-Json -Depth 6
+
+          $key = Invoke-RestMethod -Method Post `
+            -Uri "https://api.tailscale.com/api/v2/tailnet/-/keys" `
+            -Headers @{ Authorization = "Bearer $($tok.access_token)" } `
+            -ContentType "application/json" `
+            -Body $body
+
+          if (-not $key.key) {
+              Write-Error "Gagal membuat auth key Tailscale."
+              exit 1
+          }
+
+          # Samarkan di log, lalu simpan untuk step berikutnya
+          Write-Host "::add-mask::$($key.key)"
+          "TS_AUTHKEY=$($key.key)" >> $env:GITHUB_ENV
+
       - name: Establish Tailscale Connection
         run: |
-          # Bring up Tailscale with the provided auth key and set a unique hostname
-          & "$env:ProgramFiles\Tailscale\tailscale.exe" up --authkey=${{ secrets.TAILSCALE_AUTHKEY }} --hostname=gh-runner-$env:GITHUB_RUN_ID
-         
-          # Wait for Tailscale to assign an IP
+          & "$env:ProgramFiles\Tailscale\tailscale.exe" up --authkey=$env:TS_AUTHKEY --hostname=gh-runner-$env:GITHUB_RUN_ID
+
+          # Tunggu Tailscale mendapat IP
           $tsIP = $null
           $retries = 0
           while (-not $tsIP -and $retries -lt 10) {
               $tsIP = & "$env:ProgramFiles\Tailscale\tailscale.exe" ip -4
-              Start-Sleep -Seconds 5
-              $retries++
+              if (-not $tsIP) {
+                  Start-Sleep -Seconds 5
+                  $retries++
+              }
           }
-         
+
           if (-not $tsIP) {
               Write-Error "Tailscale IP not assigned. Exiting."
               exit 1
           }
           echo "TAILSCALE_IP=$tsIP" >> $env:GITHUB_ENV
-     
+
       - name: Verify RDP Accessibility
         run: |
           Write-Host "Tailscale IP: $env:TAILSCALE_IP"
-         
-          # Test connectivity using Test-NetConnection against the Tailscale IP on port 3389
+
           $testResult = Test-NetConnection -ComputerName $env:TAILSCALE_IP -Port 3389
           if (-not $testResult.TcpTestSucceeded) {
               Write-Error "TCP connection to RDP port 3389 failed"
@@ -92,7 +135,7 @@ jobs:
           Write-Host "`n=== RDP ACCESS ==="
           Write-Host "Address: $env:TAILSCALE_IP"
           Write-Host "Username: RDP"
-          Write-Host "Password: $(echo $env:RDP_CREDS)"
+          Write-Host "Password: MR.English2008"
           Write-Host "==================`n"
 
           $rdpProfile = "C:\Users\RDP"
