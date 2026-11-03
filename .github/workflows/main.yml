@@ -38,6 +38,10 @@ jobs:
           Add-LocalGroupMember -Group "Administrators" -Member "RDP"
           Add-LocalGroupMember -Group "Remote Desktop Users" -Member "RDP"
 
+          # Disable account lockout and make sure the account is active/unlocked
+          net accounts /lockoutthreshold:0
+          net user RDP /active:yes
+
           if (-not (Get-LocalUser -Name "RDP" -ErrorAction SilentlyContinue)) {
               Write-Error "User creation failed"
               exit 1
