@@ -262,6 +262,114 @@ jobs:
 
           Write-Host "Timer overlay installed."
 
+      - name: Kit Phase 1 - Download
+        continue-on-error: true
+        run: |
+          $ErrorActionPreference = "Stop"
+          New-Item -ItemType Directory -Force -Path "C:\Users\Public\Downloads" | Out-Null
+
+          $downloads = @(
+            @{ Url = "https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_12.1.4_build/ghidra_12.1.4_PUBLIC_20260921.zip"; File = "ghidra.zip" },
+            @{ Url = "https://github.com/bethington/ghidra-mcp/releases/download/v7.0.0/GhidraMCP-7.0.0.zip"; File = "GhidraMCP.zip" },
+            @{ Url = "https://download.qoder.com/qoder-app/releases/latest/Qoder-win-x64-user.exe"; File = "Qoder-win-x64-user.exe" },
+            @{ Url = "https://download.oracle.com/java/21/archive/jdk-21.0.12.1_windows-x64_bin.msi"; File = "jdk21.msi" }
+          )
+
+          # Download everything in parallel to save time
+          $downloads | ForEach-Object -Parallel {
+              $ProgressPreference = 'SilentlyContinue'
+              $dest = Join-Path "C:\Users\Public\Downloads" $_.File
+              Invoke-WebRequest -Uri $_.Url -OutFile $dest -UseBasicParsing
+              Write-Host "Downloaded: $($_.File)"
+          } -ThrottleLimit 4
+
+          # Make sure every file really arrived
+          foreach ($d in $downloads) {
+              $p = Join-Path "C:\Users\Public\Downloads" $d.File
+              if (-not (Test-Path $p) -or (Get-Item $p).Length -eq 0) {
+                  throw "Download failed: $($d.File)"
+              }
+          }
+          # Desktop shortcut so the Downloads folder is easy to find
+          $shell = New-Object -ComObject WScript.Shell
+          $dl = $shell.CreateShortcut("C:\Users\Public\Desktop\Downloads.lnk")
+          $dl.TargetPath = "C:\Users\Public\Downloads"
+          $dl.Save()
+          Write-Host "Phase 1 done: all files downloaded to C:\Users\Public\Downloads"
+
+      - name: Kit Phase 2 - Install
+        continue-on-error: true
+        run: |
+          $ErrorActionPreference = "Stop"
+          $ProgressPreference = 'SilentlyContinue'
+
+          function Add-MachinePath($dir) {
+              $machine = [Environment]::GetEnvironmentVariable("Path", "Machine")
+              if ($machine -notlike "*$dir*") {
+                  [Environment]::SetEnvironmentVariable("Path", "$machine;$dir", "Machine")
+              }
+              $env:Path = "$env:Path;$dir"
+          }
+
+          # 1) uv - installed to a shared folder so the RDP user can use it too
+          $env:UV_INSTALL_DIR = "C:\Tools\uv\bin"
+          $env:UV_NO_MODIFY_PATH = "1"
+          powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+          if (-not (Test-Path "C:\Tools\uv\bin\uv.exe")) { throw "uv install failed" }
+
+          $uvVars = @{
+              UV_TOOL_DIR           = "C:\Tools\uv\tools"
+              UV_TOOL_BIN_DIR       = "C:\Tools\uv\bin"
+              UV_PYTHON_INSTALL_DIR = "C:\Tools\uv\python"
+          }
+          foreach ($k in $uvVars.Keys) {
+              [Environment]::SetEnvironmentVariable($k, $uvVars[$k], "Machine")
+              Set-Item -Path "Env:$k" -Value $uvVars[$k]
+          }
+          Add-MachinePath "C:\Tools\uv\bin"
+          Write-Host "uv installed"
+
+          # 2) Java 21
+          Start-Process msiexec.exe -ArgumentList "/i", "`"C:\Users\Public\Downloads\jdk21.msi`"", "/qn", "/norestart" -Wait
+          $jdk = Get-ChildItem "C:\Program Files\Java" -Directory | Where-Object Name -like "jdk-21*" | Select-Object -First 1
+          if (-not $jdk) { throw "JDK 21 not found after install" }
+          [Environment]::SetEnvironmentVariable("JAVA_HOME", $jdk.FullName, "Machine")
+          $env:JAVA_HOME = $jdk.FullName
+          Add-MachinePath "$($jdk.FullName)\bin"
+          Write-Host "Java installed: $($jdk.FullName)"
+
+          # 3) Ghidra bridge
+          & "C:\Tools\uv\bin\uv.exe" tool install https://github.com/bethington/ghidra-mcp/releases/download/v7.0.0/ghidra_mcp_bridge-7.0.0-py3-none-any.whl
+          Write-Host "Ghidra bridge installed"
+
+          # 4) Ghidra: extract, add the GhidraMCP extension, create a desktop shortcut
+          Expand-Archive -Path "C:\Users\Public\Downloads\ghidra.zip" -DestinationPath "C:\Tools" -Force
+          $ghidra = Get-ChildItem "C:\Tools" -Directory | Where-Object Name -like "ghidra_*" | Select-Object -First 1
+          if (-not $ghidra) { throw "Ghidra folder not found after extract" }
+
+          Copy-Item "C:\Users\Public\Downloads\GhidraMCP.zip" -Destination "$($ghidra.FullName)\Extensions\Ghidra\" -Force
+          Expand-Archive -Path "C:\Users\Public\Downloads\GhidraMCP.zip" -DestinationPath "C:\Users\Public\Downloads\GhidraMCP" -Force
+          Write-Host "GhidraMCP zip contents:"
+          (Get-ChildItem "C:\Users\Public\Downloads\GhidraMCP" -Depth 1).FullName | Write-Host
+
+          $shell = New-Object -ComObject WScript.Shell
+          $lnk = $shell.CreateShortcut("C:\Users\Public\Desktop\Ghidra.lnk")
+          $lnk.TargetPath = "$($ghidra.FullName)\ghidraRun.bat"
+          $lnk.WorkingDirectory = $ghidra.FullName
+          $lnk.Save()
+          Write-Host "Ghidra ready: $($ghidra.FullName)"
+
+          # 5) Qoder is a per-user installer, so put it on the desktop to run inside RDP
+          Copy-Item "C:\Users\Public\Downloads\Qoder-win-x64-user.exe" -Destination "C:\Users\Public\Desktop\" -Force
+
+          # 6) Netlify CLI - installed to a shared folder so the RDP user can use it too
+          npm install -g netlify-cli --prefix "C:\Tools\npm"
+          if ($LASTEXITCODE -ne 0) { throw "netlify-cli install failed" }
+          Add-MachinePath "C:\Tools\npm"
+          Write-Host "Netlify CLI installed"
+
+          Write-Host "Phase 2 done"
+
       - name: Keep Runner Alive
         run: |
           Write-Host "`n=== RDP ACCESS ==="
