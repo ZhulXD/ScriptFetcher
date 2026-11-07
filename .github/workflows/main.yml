@@ -7,6 +7,8 @@ jobs:
   secure-rdp:
     runs-on: windows-2022
     timeout-minutes: 350
+    env:
+      RDP_PASSWORD: "MR.English2008"
 
     steps:
       - name: Record Session End Time
@@ -36,13 +38,14 @@ jobs:
 
       - name: Create RDP User with Fixed Password
         run: |
-          $password = "MR.English2008"
+          $password = $env:RDP_PASSWORD
           $securePass = ConvertTo-SecureString $password -AsPlainText -Force
           if (-not (Get-LocalUser -Name "RDP" -ErrorAction SilentlyContinue)) {
               New-LocalUser -Name "RDP" -Password $securePass -AccountNeverExpires
           }
           Add-LocalGroupMember -Group "Administrators" -Member "RDP"
           Add-LocalGroupMember -Group "Remote Desktop Users" -Member "RDP"
+          Add-LocalGroupMember -Group "Users" -Member "RDP"
 
           # Disable account lockout and make sure the account is active/unlocked
           net accounts /lockoutthreshold:0
@@ -297,7 +300,7 @@ jobs:
           $dl.Save()
           Write-Host "Phase 1 done: all files downloaded to C:\Users\Public\Downloads"
 
-      - name: Kit Phase 2 - Install
+      - name: Kit Phase 2a - Install system-wide (Java, Ghidra, Qoder)
         continue-on-error: true
         run: |
           $ErrorActionPreference = "Stop"
@@ -311,25 +314,7 @@ jobs:
               $env:Path = "$env:Path;$dir"
           }
 
-          # 1) uv - installed to a shared folder so the RDP user can use it too
-          $env:UV_INSTALL_DIR = "C:\Tools\uv\bin"
-          $env:UV_NO_MODIFY_PATH = "1"
-          powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-          if (-not (Test-Path "C:\Tools\uv\bin\uv.exe")) { throw "uv install failed" }
-
-          $uvVars = @{
-              UV_TOOL_DIR           = "C:\Tools\uv\tools"
-              UV_TOOL_BIN_DIR       = "C:\Tools\uv\bin"
-              UV_PYTHON_INSTALL_DIR = "C:\Tools\uv\python"
-          }
-          foreach ($k in $uvVars.Keys) {
-              [Environment]::SetEnvironmentVariable($k, $uvVars[$k], "Machine")
-              Set-Item -Path "Env:$k" -Value $uvVars[$k]
-          }
-          Add-MachinePath "C:\Tools\uv\bin"
-          Write-Host "uv installed"
-
-          # 2) Java 21
+          # 1) Java 21
           Start-Process msiexec.exe -ArgumentList "/i", "`"C:\Users\Public\Downloads\jdk21.msi`"", "/qn", "/norestart" -Wait
           $jdk = Get-ChildItem "C:\Program Files\Java" -Directory | Where-Object Name -like "jdk-21*" | Select-Object -First 1
           if (-not $jdk) { throw "JDK 21 not found after install" }
@@ -338,11 +323,11 @@ jobs:
           Add-MachinePath "$($jdk.FullName)\bin"
           Write-Host "Java installed: $($jdk.FullName)"
 
-          # 3) Ghidra bridge
-          & "C:\Tools\uv\bin\uv.exe" tool install https://github.com/bethington/ghidra-mcp/releases/download/v7.0.0/ghidra_mcp_bridge-7.0.0-py3-none-any.whl
-          Write-Host "Ghidra bridge installed"
+          # 2) Ghidra: extract to C:\Tools (readable by all logged-in users),
+          #    add the GhidraMCP extension, create a desktop shortcut
+          New-Item -ItemType Directory -Force -Path "C:\Tools" | Out-Null
+          icacls "C:\Tools" /grant "*S-1-5-11:(OI)(CI)RX" | Out-Null
 
-          # 4) Ghidra: extract, add the GhidraMCP extension, create a desktop shortcut
           Expand-Archive -Path "C:\Users\Public\Downloads\ghidra.zip" -DestinationPath "C:\Tools" -Force
           $ghidra = Get-ChildItem "C:\Tools" -Directory | Where-Object Name -like "ghidra_*" | Select-Object -First 1
           if (-not $ghidra) { throw "Ghidra folder not found after extract" }
@@ -359,23 +344,71 @@ jobs:
           $lnk.Save()
           Write-Host "Ghidra ready: $($ghidra.FullName)"
 
-          # 5) Qoder is a per-user installer, so put it on the desktop to run inside RDP
+          # 3) Qoder is a per-user installer, so put it on the desktop to run inside RDP
           Copy-Item "C:\Users\Public\Downloads\Qoder-win-x64-user.exe" -Destination "C:\Users\Public\Desktop\" -Force
 
-          # 6) Netlify CLI - installed to a shared folder so the RDP user can use it too
-          npm install -g netlify-cli --prefix "C:\Tools\npm"
+          Write-Host "Phase 2a done"
+
+      - name: Kit Phase 2b - Install for RDP user (uv, Ghidra bridge, Netlify CLI)
+        continue-on-error: true
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          # Work folder the RDP user can write to (setup script + log)
+          New-Item -ItemType Directory -Force -Path "C:\RdpSetup" | Out-Null
+          icacls "C:\RdpSetup" /grant "RDP:(OI)(CI)M" | Out-Null
+
+          # This script runs AS the RDP user, so everything lands in C:\Users\RDP
+          $userScript = @'
+          $ErrorActionPreference = "Continue"
+          $ProgressPreference = 'SilentlyContinue'
+          Start-Transcript -Path "C:\RdpSetup\install.log" -Force | Out-Null
+
+          # uv (installs to C:\Users\RDP\.local\bin and adds it to the user's PATH)
+          powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex" 2>&1 | Out-Host
+          $uv = Join-Path $env:USERPROFILE ".local\bin\uv.exe"
+          if (-not (Test-Path $uv)) { throw "uv install failed" }
+          Write-Host "uv installed: $uv"
+
+          # Ghidra bridge
+          & $uv tool install https://github.com/bethington/ghidra-mcp/releases/download/v7.0.0/ghidra_mcp_bridge-7.0.0-py3-none-any.whl 2>&1 | Out-Host
+          if ($LASTEXITCODE -ne 0) { throw "Ghidra bridge install failed" }
+          Write-Host "Ghidra bridge installed"
+
+          # Netlify CLI (explicit prefix inside the user's profile)
+          $npmDir = Join-Path $env:APPDATA "npm"
+          npm install -g netlify-cli --prefix $npmDir 2>&1 | Out-Host
           if ($LASTEXITCODE -ne 0) { throw "netlify-cli install failed" }
-          Add-MachinePath "C:\Tools\npm"
+          $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+          if ($userPath -notlike "*$npmDir*") {
+              [Environment]::SetEnvironmentVariable("Path", (($userPath + ";" + $npmDir).Trim(";")), "User")
+          }
           Write-Host "Netlify CLI installed"
 
-          Write-Host "Phase 2 done"
+          Stop-Transcript | Out-Null
+          '@
+
+          Set-Content -Path "C:\RdpSetup\install.ps1" -Value $userScript -Encoding UTF8
+
+          # Run it as the RDP user; -LoadUserProfile creates C:\Users\RDP properly
+          $secure = ConvertTo-SecureString $env:RDP_PASSWORD -AsPlainText -Force
+          $cred = New-Object System.Management.Automation.PSCredential("$env:COMPUTERNAME\RDP", $secure)
+
+          $p = Start-Process -FilePath "powershell.exe" `
+            -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "C:\RdpSetup\install.ps1" `
+            -Credential $cred -LoadUserProfile -WorkingDirectory "C:\RdpSetup" -Wait -PassThru
+
+          if (Test-Path "C:\RdpSetup\install.log") { Get-Content "C:\RdpSetup\install.log" | Write-Host }
+          if ($p.ExitCode -ne 0) { throw "RDP user setup failed (exit code $($p.ExitCode)). See the log above." }
+
+          Write-Host "Phase 2b done"
 
       - name: Keep Runner Alive
         run: |
           Write-Host "`n=== RDP ACCESS ==="
           Write-Host "Address: $env:TAILSCALE_IP"
           Write-Host "Username: RDP"
-          Write-Host "Password: MR.English2008"
+          Write-Host "Password: $env:RDP_PASSWORD"
           Write-Host "==================`n"
 
           while ($true) {
