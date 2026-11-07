@@ -366,6 +366,29 @@ jobs:
           $ProgressPreference = 'SilentlyContinue'
           Start-Transcript -Path "C:\RdpSetup\install.log" -Force | Out-Null
 
+          # The parent's environment is inherited, so USERPROFILE/TEMP/APPDATA still point to
+          # the runner account. Point them at the RDP user's own profile instead.
+          $profileDir = "C:\Users\RDP"
+          $sid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+          $regPath = "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList\$sid"
+          $found = [Microsoft.Win32.Registry]::GetValue($regPath, "ProfileImagePath", $null)
+          if ($found) { $profileDir = $found }
+          if (-not (Test-Path $profileDir)) { throw "RDP profile folder not found: $profileDir" }
+
+          $env:USERPROFILE  = $profileDir
+          $env:HOME         = $profileDir
+          $env:HOMEDRIVE    = $profileDir.Substring(0, 2)
+          $env:HOMEPATH     = $profileDir.Substring(2)
+          $env:APPDATA      = "$profileDir\AppData\Roaming"
+          $env:LOCALAPPDATA = "$profileDir\AppData\Local"
+          $env:TEMP         = "$profileDir\AppData\Local\Temp"
+          $env:TMP          = $env:TEMP
+          $env:USERNAME     = "RDP"
+          foreach ($d in @($env:APPDATA, $env:LOCALAPPDATA, $env:TEMP)) {
+              New-Item -ItemType Directory -Force -Path $d | Out-Null
+          }
+          Write-Host "Installing for profile: $profileDir"
+
           # uv (installs to C:\Users\RDP\.local\bin and adds it to the user's PATH)
           powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex" 2>&1 | Out-Host
           $uv = Join-Path $env:USERPROFILE ".local\bin\uv.exe"
