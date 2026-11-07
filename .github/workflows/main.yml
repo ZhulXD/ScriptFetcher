@@ -455,7 +455,7 @@ jobs:
           Write-Host "Password: $env:RDP_PASSWORD"
           Write-Host "==================`n"
 
+          # Keep the runner alive silently (no output needed to stay running)
           while ($true) {
-              Write-Host "[$(Get-Date)] RDP Active - cancel the workflow to terminate"
               Start-Sleep -Seconds 300
           }
