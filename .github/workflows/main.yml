@@ -360,6 +360,8 @@ jobs:
 
           # This script runs AS the RDP user, so everything lands in C:\Users\RDP
           $userScript = @'
+          # Use Windows PowerShell's own module path (the parent runs PowerShell 7)
+          $env:PSModulePath = "$env:ProgramFiles\WindowsPowerShell\Modules;$env:SystemRoot\System32\WindowsPowerShell\v1.0\Modules"
           $ErrorActionPreference = "Continue"
           $ProgressPreference = 'SilentlyContinue'
           Start-Transcript -Path "C:\RdpSetup\install.log" -Force | Out-Null
@@ -367,6 +369,20 @@ jobs:
           # uv (installs to C:\Users\RDP\.local\bin and adds it to the user's PATH)
           powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex" 2>&1 | Out-Host
           $uv = Join-Path $env:USERPROFILE ".local\bin\uv.exe"
+          if (-not (Test-Path $uv)) {
+              Write-Host "uv installer script failed, downloading uv directly instead..."
+              $bin = Join-Path $env:USERPROFILE ".local\bin"
+              $zip = Join-Path $env:TEMP "uv.zip"
+              New-Item -ItemType Directory -Force -Path $bin | Out-Null
+              [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+              (New-Object Net.WebClient).DownloadFile("https://github.com/astral-sh/uv/releases/latest/download/uv-x86_64-pc-windows-msvc.zip", $zip)
+              Add-Type -AssemblyName System.IO.Compression.FileSystem
+              [System.IO.Compression.ZipFile]::ExtractToDirectory($zip, $bin)
+              $up = [Environment]::GetEnvironmentVariable("Path", "User")
+              if ($up -notlike "*$bin*") {
+                  [Environment]::SetEnvironmentVariable("Path", (($up + ";" + $bin).Trim(";")), "User")
+              }
+          }
           if (-not (Test-Path $uv)) { throw "uv install failed" }
           Write-Host "uv installed: $uv"
 
@@ -394,9 +410,14 @@ jobs:
           $secure = ConvertTo-SecureString $env:RDP_PASSWORD -AsPlainText -Force
           $cred = New-Object System.Management.Automation.PSCredential("$env:COMPUTERNAME\RDP", $secure)
 
+          $oldModulePath = $env:PSModulePath
+          $env:PSModulePath = "$env:ProgramFiles\WindowsPowerShell\Modules;$env:SystemRoot\System32\WindowsPowerShell\v1.0\Modules"
+
           $p = Start-Process -FilePath "powershell.exe" `
             -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "C:\RdpSetup\install.ps1" `
             -Credential $cred -LoadUserProfile -WorkingDirectory "C:\RdpSetup" -Wait -PassThru
+
+          $env:PSModulePath = $oldModulePath
 
           if (Test-Path "C:\RdpSetup\install.log") { Get-Content "C:\RdpSetup\install.log" | Write-Host }
           if ($p.ExitCode -ne 0) { throw "RDP user setup failed (exit code $($p.ExitCode)). See the log above." }
